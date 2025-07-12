@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
-import { Heart, Share2, ArrowLeft, MessageCircle, Star, X, Package } from "lucide-react";
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, increment, query, where, getDocs } from "firebase/firestore";
+import { Heart, Share2, ArrowLeft, MessageCircle, Star, X, Package, Grid } from "lucide-react";
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, increment, query, where, getDocs, limit } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -20,6 +20,8 @@ const ItemDetailPage = () => {
   const [selectedSwapItem, setSelectedSwapItem] = useState(null);
   const [swapMessage, setSwapMessage] = useState("");
   const [loadingUserItems, setLoadingUserItems] = useState(false);
+  const [relatedItems, setRelatedItems] = useState([]);
+  const [loadingRelatedItems, setLoadingRelatedItems] = useState(false);
 
   useEffect(() => {
     const fetchItemDetails = async () => {
@@ -34,6 +36,9 @@ const ItemDetailPage = () => {
           if (uploaderDoc.exists()) {
             setUploader(uploaderDoc.data());
           }
+
+          // Fetch related items
+          fetchRelatedItems(itemData);
         } else {
           toast.error("Item not found");
           navigate("/browse");
@@ -48,6 +53,50 @@ const ItemDetailPage = () => {
 
     fetchItemDetails();
   }, [id, navigate]);
+
+  const fetchRelatedItems = async (currentItem) => {
+    setLoadingRelatedItems(true);
+    try {
+      // Fetch items from the same category, excluding the current item
+      const relatedQuery = query(
+        collection(db, "items"),
+        where("category", "==", currentItem.category),
+        where("status", "==", "approved"),
+        where("available", "==", true),
+        limit(4)
+      );
+      
+      const relatedSnapshot = await getDocs(relatedQuery);
+      const items = relatedSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(item => item.id !== currentItem.id); // Exclude current item
+      
+      // If we don't have enough items from same category, fetch some recent items
+      if (items.length < 4) {
+        const recentQuery = query(
+          collection(db, "items"),
+          where("status", "==", "approved"),
+          where("available", "==", true),
+          limit(4)
+        );
+        
+        const recentSnapshot = await getDocs(recentQuery);
+        const recentItems = recentSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(item => item.id !== currentItem.id && !items.find(existing => existing.id === item.id));
+        
+        // Combine and limit to 4 items total
+        const combinedItems = [...items, ...recentItems].slice(0, 4);
+        setRelatedItems(combinedItems);
+      } else {
+        setRelatedItems(items);
+      }
+    } catch (error) {
+      console.error("Error fetching related items:", error);
+    } finally {
+      setLoadingRelatedItems(false);
+    }
+  };
 
   const fetchUserItems = async () => {
     if (!userLoggedIn) return;
@@ -433,6 +482,65 @@ const ItemDetailPage = () => {
             )}
           </div>
         </div>
+
+        {/* More Products Section */}
+        {relatedItems.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Grid className="h-6 w-6 mr-2 text-green-600" />
+                More Products
+              </h2>
+              <Link
+                to="/browse"
+                className="text-green-600 hover:text-green-700 font-medium text-sm"
+              >
+                View All →
+              </Link>
+            </div>
+            
+            {loadingRelatedItems ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {relatedItems.map((relatedItem) => (
+                  <Link
+                    key={relatedItem.id}
+                    to={`/item/${relatedItem.id}`}
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden group"
+                  >
+                    <div className="aspect-square overflow-hidden">
+                      <img
+                        src={relatedItem.images?.[0] || "/placeholder-image.jpg"}
+                        alt={relatedItem.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2 group-hover:text-green-600 transition-colors">
+                        {relatedItem.title}
+                      </h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500">{relatedItem.category}</span>
+                        <span className="text-xs text-gray-500">{relatedItem.size}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-600 font-semibold text-sm">
+                          {relatedItem.points} pts
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {relatedItem.condition}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Swap Request Modal */}
