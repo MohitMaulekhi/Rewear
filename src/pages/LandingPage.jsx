@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Users, TrendingUp, Heart, Star, Sparkles, ShoppingBag, RefreshCw } from "lucide-react";
+import { ArrowRight, Users, TrendingUp, Heart, Sparkles, ShoppingBag, RefreshCw } from "lucide-react";
 import { useAuth } from "../context/UseAuth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 import ProductCard from "../components/ProductCard";
 
 const categories = [
-  "Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", 
-  "Accessories", "Bags", "Jewelry", "Athletic wear", "Formal wear"
+  { name: "Tops", emoji: "👕" },
+  { name: "Bottoms", emoji: "👖" },
+  { name: "Dresses", emoji: "👗" },
+  { name: "Outerwear", emoji: "🧥" },
+  { name: "Shoes", emoji: "👟" },
+  { name: "Accessories", emoji: "🧢" },
+  { name: "Bags", emoji: "🛍️" },
+  { name: "Jewelry", emoji: "💍" },
+  { name: "Athletic wear", emoji: "🏃" },
+  { name: "Formal wear", emoji: "👨‍💼" },
 ];
 
 const stats = [
@@ -161,16 +169,14 @@ const LandingPage = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6">
             {categories.map((cat, index) => (
               <Link
-                key={cat}
-                to={`/category/${cat}`}
-                className="group relative bg-white rounded-3xl shadow-lg py-8 px-4 hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 cursor-pointer overflow-hidden"
+                key={cat.name}
+                to={`/browse?category=${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
+                className="group relative bg-green-50 rounded-2xl shadow-md py-8 px-4 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer hover:-translate-y-2 hover:bg-green-100 hover:ring-2 hover:ring-green-300"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="relative text-center">
-                  <span className="text-4xl mb-4 block group-hover:scale-110 transition-transform duration-300">
-                    {/* Optionally add icons for each category if desired */}
-                  </span>
-                  <span className="font-semibold text-gray-800 text-lg">{cat}</span>
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-5xl mb-3 drop-shadow-sm transition-transform group-hover:scale-110">{cat.emoji}</span>
+                  <span className="font-semibold text-green-900 text-base tracking-tight mt-1 text-center group-hover:text-green-700 transition-colors">{cat.name}</span>
                 </div>
               </Link>
             ))}

@@ -7,7 +7,6 @@ import Dashboard from "./pages/Dashboard";
 import ItemDetailPage from "./pages/ItemDetailPage";
 import AddItemPage from "./pages/AddItemPage";
 import BrowseItemsPage from "./pages/BrowseItemsPage";
-import CategoryPage from "./pages/CategoryPage";
 import AdminPanel from "./pages/AdminPanel";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -23,7 +22,6 @@ function AppContent() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/browse" element={<BrowseItemsPage />} />
-          <Route path="/category/:category" element={<CategoryPage />} />
           <Route path="/item/:id" element={<ItemDetailPage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>

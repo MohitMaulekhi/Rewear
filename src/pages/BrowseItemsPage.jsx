@@ -1,8 +1,26 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Search, Filter, Grid, List, ChevronLeft, ChevronRight } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
+
+function getCategoryFromQueryParam(param) {
+  if (!param) return "";
+  // Convert hyphenated lowercase to normal category
+  const map = {
+    "tops": "Tops",
+    "bottoms": "Bottoms",
+    "dresses": "Dresses",
+    "outerwear": "Outerwear",
+    "shoes": "Shoes",
+    "accessories": "Accessories",
+    "bags": "Bags",
+    "jewelry": "Jewelry",
+    "athletic-wear": "Athletic wear",
+    "formal-wear": "Formal wear"
+  };
+  return map[param] || "";
+}
 
 const BrowseItemsPage = () => {
   const [items, setItems] = useState([]);
@@ -27,6 +45,17 @@ const BrowseItemsPage = () => {
   const conditions = [
     "Like New", "Excellent", "Good", "Fair"
   ];
+
+  const location = useLocation();
+
+  useEffect(() => {
+    // Read category from query params
+    const params = new URLSearchParams(location.search);
+    const catParam = params.get("category");
+    if (catParam) {
+      setSelectedCategory(getCategoryFromQueryParam(catParam));
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchItems = async () => {
