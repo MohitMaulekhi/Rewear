@@ -361,15 +361,15 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
                 Welcome back, {currentUser?.name}!
               </h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-sm sm:text-base text-gray-600 mt-2">
                 Manage your items, track your swaps, and grow your sustainable wardrobe.
               </p>
             </div>
@@ -378,7 +378,7 @@ const Dashboard = () => {
                 <img
                   src={defaultAvatar}
                   alt="Your avatar"
-                  className="w-16 h-16 rounded-full cursor-pointer hover:ring-2 hover:ring-green-500 transition-all"
+                  className="w-12 h-12 sm:w-16 sm:h-16 rounded-full cursor-pointer hover:ring-2 hover:ring-green-500 transition-all"
                   onClick={() => setShowAvatarModal(true)}
                 />
                 <button
@@ -386,7 +386,7 @@ const Dashboard = () => {
                   className="absolute -bottom-1 -right-1 bg-green-600 text-white rounded-full p-1 hover:bg-green-700 transition-colors"
                   title="Change avatar"
                 >
-                  <Camera className="h-3 w-3" />
+                  <Camera className="h-2 w-2 sm:h-3 sm:w-3" />
                 </button>
               </div>
             </div>
@@ -394,18 +394,18 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           {stats.map((stat) => {
             const IconComponent = stat.icon;
             return (
-              <div key={stat.name} className="bg-white rounded-lg shadow p-6">
+              <div key={stat.name} className="bg-white rounded-lg shadow p-3 sm:p-6">
                 <div className="flex items-center">
-                  <div className={`${stat.bgColor} rounded-md p-3`}>
-                    <IconComponent className={`h-6 w-6 ${stat.color}`} />
+                  <div className={`${stat.bgColor} rounded-md p-2 sm:p-3`}>
+                    <IconComponent className={`h-4 w-4 sm:h-6 sm:w-6 ${stat.color}`} />
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">{stat.name}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <div className="ml-2 sm:ml-4">
+                    <p className="text-xs sm:text-sm font-medium text-gray-500">{stat.name}</p>
+                    <p className="text-lg sm:text-2xl font-bold text-gray-900">{stat.value}</p>
                   </div>
                 </div>
               </div>
@@ -413,50 +413,52 @@ const Dashboard = () => {
           })}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* My Items */}
           <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">My Items</h2>
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">My Items</h2>
               <Link to="/add-item" className="text-green-600 hover:text-green-700 text-sm font-medium">
                 Add Item
               </Link>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {userItems.length > 0 ? (
-                <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+                <div className="max-h-96 overflow-y-auto space-y-3 sm:space-y-4 pr-2">
                   {userItems.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg">
-                      <img
-                        src={item.images?.[0] || "/placeholder-image.jpg"}
-                        alt={item.title}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{item.title}</h3>
-                        <p className="text-sm text-gray-500">{item.category}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            item.status === "approved" ? "bg-green-100 text-green-800" :
-                            item.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                            item.status === "withdrawn" ? "bg-gray-100 text-gray-500" :
-                            "bg-red-100 text-red-800"
-                          }`}>
-                            {item.status || "pending"}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {item.available ? "Available" : "Not Available"}
-                          </span>
+                    <div key={item.id} className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-3 border border-gray-200 rounded-lg">
+                      <div className="flex items-center space-x-3 sm:space-x-4">
+                        <img
+                          src={item.images?.[0] || "/placeholder-image.jpg"}
+                          alt={item.title}
+                          className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{item.title}</h3>
+                          <p className="text-xs sm:text-sm text-gray-500">{item.category}</p>
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              item.status === "approved" ? "bg-green-100 text-green-800" :
+                              item.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                              item.status === "withdrawn" ? "bg-gray-100 text-gray-500" :
+                              "bg-red-100 text-red-800"
+                            }`}>
+                              {item.status || "pending"}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {item.available ? "Available" : "Not Available"}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right flex flex-col items-end gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
                         <p className="text-sm font-medium text-green-600">{item.points} pts</p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
                           {/* Edit button: only if not withdrawn or rejected */}
                           {item.status !== "withdrawn" && item.status !== "rejected" && (
                             <button
                               onClick={() => navigate(`/add-item?edit=${item.id}`)}
-                              className="px-3 py-1 text-xs rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 font-semibold transition"
+                              className="px-2 py-1 sm:px-3 sm:py-1 text-xs rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 font-semibold transition"
                             >
                               Edit
                             </button>
@@ -464,7 +466,7 @@ const Dashboard = () => {
                           {/* Delete button: always show */}
                           <button
                             onClick={() => handleDeleteItem(item.id)}
-                            className="px-3 py-1 text-xs rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-semibold transition"
+                            className="px-2 py-1 sm:px-3 sm:py-1 text-xs rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-semibold transition"
                           >
                             Delete
                           </button>
@@ -472,9 +474,9 @@ const Dashboard = () => {
                           {item.status === "pending" && (
                             <button
                               onClick={() => handleWithdrawRequest(item.id)}
-                              className="px-3 py-1 text-xs rounded bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 font-semibold transition"
+                              className="px-2 py-1 sm:px-3 sm:py-1 text-xs rounded bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 font-semibold transition"
                             >
-                              Withdraw Request
+                              Withdraw
                             </button>
                           )}
                         </div>
@@ -483,12 +485,12 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No items listed yet</p>
+                <div className="text-center py-6 sm:py-8">
+                  <Package className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-sm sm:text-base text-gray-500">No items listed yet</p>
                   <Link
                     to="/add-item"
-                    className="mt-2 text-green-600 hover:text-green-700 font-medium"
+                    className="mt-2 text-green-600 hover:text-green-700 font-medium text-sm sm:text-base"
                   >
                     List your first item
                   </Link>
@@ -499,17 +501,17 @@ const Dashboard = () => {
 
           {/* Recent Swaps */}
           <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Swaps</h2>
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Recent Swaps</h2>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {userSwaps.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {userSwaps.slice(0, 3).map((swap) => (
-                    <div key={swap.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div key={swap.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border border-gray-200 rounded-lg space-y-2 sm:space-y-0">
                       <div>
-                        <p className="font-medium text-gray-900">Swap Request</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="font-medium text-gray-900 text-sm sm:text-base">Swap Request</p>
+                        <p className="text-xs sm:text-sm text-gray-500">
                           Status: <span className={`capitalize ${
                             swap.status === "completed" ? "text-green-600" :
                             swap.status === "pending" ? "text-yellow-600" :
@@ -519,7 +521,7 @@ const Dashboard = () => {
                           </span>
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <p className="text-xs text-gray-500">
                           {new Date(swap.createdAt?.toDate()).toLocaleDateString()}
                         </p>
@@ -527,18 +529,18 @@ const Dashboard = () => {
                     </div>
                   ))}
                   {userSwaps.length > 3 && (
-                    <p className="text-sm text-gray-500 text-center pt-2">
+                    <p className="text-xs sm:text-sm text-gray-500 text-center pt-2">
                       And {userSwaps.length - 3} more swaps...
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No swaps yet</p>
+                <div className="text-center py-6 sm:py-8">
+                  <Users className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-sm sm:text-base text-gray-500">No swaps yet</p>
                   <Link
                     to="/browse"
-                    className="mt-2 text-green-600 hover:text-green-700 font-medium"
+                    className="mt-2 text-green-600 hover:text-green-700 font-medium text-sm sm:text-base"
                   >
                     Browse items to swap
                   </Link>
@@ -550,20 +552,20 @@ const Dashboard = () => {
 
         {/* Swap Requests Section */}
         {(incomingSwaps.length > 0 || outgoingSwaps.length > 0) && (
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Swap Requests</h2>
-            <div className="grid lg:grid-cols-2 gap-8">
+          <div className="mt-6 sm:mt-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Swap Requests</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {/* Incoming Swap Requests */}
               <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <MessageCircle className="h-5 w-5 text-green-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                       Incoming Requests ({incomingSwaps.length})
                     </h3>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   {incomingSwaps.length > 0 ? (
                     <div className="space-y-4 max-h-96 overflow-y-auto">
                       {incomingSwaps.map((swap) => (
@@ -912,10 +914,10 @@ const Dashboard = () => {
 
         {/* Avatar Selection Modal */}
         {showAvatarModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Choose Your Avatar</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Choose Your Avatar</h3>
                 <button
                   onClick={() => {
                     setShowAvatarModal(false);
@@ -924,40 +926,42 @@ const Dashboard = () => {
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
               
               {/* Tab Navigation */}
-              <div className="flex space-x-1 mb-6">
+              <div className="flex space-x-1 mb-4 sm:mb-6">
                 <button
                   onClick={() => setActiveAvatarTab('preset')}
-                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+                  className={`flex-1 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                     activeAvatarTab === 'preset'
                       ? 'bg-green-100 text-green-700 border border-green-200'
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <User className="h-4 w-4 inline mr-2" />
-                  Preset Avatars
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Preset Avatars</span>
+                  <span className="sm:hidden">Preset</span>
                 </button>
                 <button
                   onClick={() => setActiveAvatarTab('upload')}
-                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+                  className={`flex-1 py-2 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                     activeAvatarTab === 'upload'
                       ? 'bg-green-100 text-green-700 border border-green-200'
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <Upload className="h-4 w-4 inline mr-2" />
-                  Upload Custom
+                  <Upload className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Upload Custom</span>
+                  <span className="sm:hidden">Upload</span>
                 </button>
               </div>
               
               {/* Tab Content */}
               {activeAvatarTab === 'preset' ? (
                 <>
-                  <div className="grid grid-cols-4 gap-3 mb-6">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
                     {avatarOptions.map((avatar, index) => (
                       <button
                         key={index}
@@ -971,26 +975,26 @@ const Dashboard = () => {
                         <img
                           src={avatar}
                           alt={`Avatar option ${index + 1}`}
-                          className="w-16 h-16 object-cover"
+                          className="w-12 h-12 sm:w-16 sm:h-16 object-cover"
                         />
                       </button>
                     ))}
                   </div>
                   
-                  <div className="flex justify-end space-x-3">
+                  <div className="flex justify-end space-x-2 sm:space-x-3">
                     <button
                       onClick={() => {
                         setShowAvatarModal(false);
                         setActiveAvatarTab('preset');
                         setSelectedAvatar(null);
                       }}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                      className="px-3 py-2 sm:px-4 sm:py-2 text-gray-600 hover:text-gray-800 font-medium text-sm sm:text-base"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={() => handleAvatarUpdate(selectedAvatar || defaultAvatar)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+                      className="px-3 py-2 sm:px-4 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-sm sm:text-base"
                     >
                       Save Avatar
                     </button>
@@ -998,30 +1002,30 @@ const Dashboard = () => {
                 </>
               ) : (
                 <>
-                  <div className="mb-6">
-                    <p className="text-sm text-gray-600 mb-4">
+                  <div className="mb-4 sm:mb-6">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                       Upload your own avatar image. Recommended size: 200x200px or larger.
                     </p>
                     
                     {avatarPreview ? (
-                      <div className="relative w-32 mx-auto">
+                      <div className="relative w-24 h-24 sm:w-32 sm:h-32 mx-auto">
                         <img
                           src={avatarPreview}
                           alt="Avatar preview"
-                          className="w-32 h-32 object-cover rounded-full border-2 border-gray-300"
+                          className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-full border-2 border-gray-300"
                         />
                         <button
                           type="button"
                           onClick={removeUploadedAvatar}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                       </div>
                     ) : (
-                      <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 cursor-pointer w-32 h-32 mx-auto flex flex-col items-center justify-center">
-                        <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                        <span className="text-sm text-gray-500">Upload Image</span>
+                      <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center hover:border-gray-400 cursor-pointer w-24 h-24 sm:w-32 sm:h-32 mx-auto flex flex-col items-center justify-center">
+                        <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mb-1 sm:mb-2" />
+                        <span className="text-xs sm:text-sm text-gray-500">Upload Image</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -1032,7 +1036,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   
-                  <div className="flex justify-end space-x-3">
+                  <div className="flex justify-end space-x-2 sm:space-x-3">
                     <button
                       onClick={() => {
                         setShowAvatarModal(false);
@@ -1040,7 +1044,7 @@ const Dashboard = () => {
                         setSelectedAvatar(null);
                         removeUploadedAvatar();
                       }}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                      className="px-3 py-2 sm:px-4 sm:py-2 text-gray-600 hover:text-gray-800 font-medium text-sm sm:text-base"
                     >
                       Cancel
                     </button>
@@ -1048,12 +1052,13 @@ const Dashboard = () => {
                       <button
                         onClick={handleCustomAvatarUpload}
                         disabled={uploadingAvatar}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        className="px-3 py-2 sm:px-4 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm sm:text-base"
                       >
                         {uploadingAvatar ? (
                           <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Uploading...
+                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                            <span className="hidden sm:inline">Uploading...</span>
+                            <span className="sm:hidden">Upload...</span>
                           </>
                         ) : (
                           'Save Avatar'
