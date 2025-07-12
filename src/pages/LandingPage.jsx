@@ -18,40 +18,15 @@ const stats = [
   { icon: TrendingUp, value: "2.5K", label: "Monthly Swaps", color: "text-green-600" },
 ];
 
-const testimonials = [
-  {
-    name: "Sarah Johnson",
-    role: "Fashion Enthusiast",
-    content: "ReWear has completely changed how I think about fashion. I've discovered amazing pieces while giving my clothes a second life!",
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-    rating: 5
-  },
-  {
-    name: "Mike Chen",
-    role: "Sustainability Advocate",
-    content: "Finally, a platform that makes sustainable fashion accessible and fun. The community is amazing and the quality is top-notch.",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-    rating: 5
-  },
-  {
-    name: "Emma Davis",
-    role: "College Student",
-    content: "Perfect for my budget! I've found designer pieces at a fraction of the cost while helping the environment.",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-    rating: 5
-  }
-];
-
 function getRandomItems(arr, n) {
   const shuffled = arr.slice().sort(() => 0.5 - Math.random());
   return shuffled.slice(0, n);
 }
 
 const LandingPage = () => {
-  const { userLoggedIn } = useAuth();
+  const { userLoggedIn, currentUser } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -98,11 +73,15 @@ const LandingPage = () => {
               <span className="text-sm font-medium text-gray-700">Join the sustainable fashion revolution</span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 leading-tight">
-              Welcome to{" "}
-              <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
-                ReWear
-              </span>
+            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-4 leading-tight">
+              {userLoggedIn
+                ? (<>
+                    <span className="block">Welcome Back <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">{currentUser?.name?.split(' ')[0] || ''}</span></span>
+                    <span className="block text-3xl md:text-4xl font-bold text-green-700 mt-2">What are you looking for today?</span>
+                  </>)
+                : (<>
+                    Start your journey with <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">ReWear</span>
+                  </>)}
             </h1>
             
             <p className="text-xl md:text-2xl text-gray-700 mb-12 max-w-4xl mx-auto leading-relaxed">
@@ -110,27 +89,39 @@ const LandingPage = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Link 
-                to="/signup" 
-                className="group bg-gradient-to-r from-green-500 to-emerald-400 text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg"
-              >
-                Start Swapping 
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link 
-                to="/browse" 
-                className="group bg-white text-green-600 border-2 border-green-200 px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg hover:bg-green-50"
-              >
-                Browse Items 
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link 
-                to="/add-item" 
-                className="group bg-green-100 text-green-700 px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg hover:bg-green-200"
-              >
-                List an Item 
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              {!userLoggedIn ? (
+                <Link 
+                  to="/login" 
+                  className="group bg-gradient-to-r from-green-500 to-emerald-400 text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg"
+                >
+                  Start Swapping 
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              ) : (
+                <>
+                  <Link 
+                    to="/browse" 
+                    className="group bg-white text-green-600 border-2 border-green-200 px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg hover:bg-green-50"
+                  >
+                    Browse Items 
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                  <Link 
+                    to="/add-item" 
+                    className="group bg-green-100 text-green-700 px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg hover:bg-green-200"
+                  >
+                    List an Item 
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="group bg-yellow-100 text-green-700 px-8 py-4 rounded-full font-semibold shadow-lg hover:bg-yellow-200 transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center text-lg"
+                  >
+                    Go to Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -187,55 +178,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20 bg-white/30 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Community Says</h2>
-            <p className="text-xl text-gray-600">Join thousands of satisfied users who love sustainable fashion</p>
-          </div>
-          
-          <div className="relative">
-            <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12">
-              <div className="flex items-center justify-center mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-6 w-6 text-yellow-400 fill-current" />
-                ))}
-              </div>
-              
-              <blockquote className="text-xl md:text-2xl text-gray-700 text-center mb-8 leading-relaxed">
-                "{testimonials[currentTestimonial].content}"
-              </blockquote>
-              
-              <div className="flex items-center justify-center">
-                <img
-                  src={testimonials[currentTestimonial].avatar}
-                  alt={testimonials[currentTestimonial].name}
-                  className="w-16 h-16 rounded-full object-cover mr-4 border-4 border-white shadow-lg"
-                />
-                <div>
-                  <div className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</div>
-                  <div className="text-gray-600">{testimonials[currentTestimonial].role}</div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Testimonial indicators */}
-            <div className="flex justify-center mt-6 space-x-2">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentTestimonial(index)}
-                  className={`w-3 h-3 rounded-full transition-colors ${
-                    index === currentTestimonial ? 'bg-green-500' : 'bg-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Featured Products Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -257,9 +199,7 @@ const LandingPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-8">
               {randomItems.map((item, index) => (
                 <div
-                  key={item.id}
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
+                  key={item.id}                >
                   <ProductCard item={item} />
                 </div>
               ))}
@@ -279,32 +219,25 @@ const LandingPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-green-500 to-emerald-400">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Start Your Sustainable Fashion Journey?
-          </h2>
-          <p className="text-xl text-green-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of fashion enthusiasts who are making a difference one swap at a time
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      {!userLoggedIn ? (
+        <section className="py-20 bg-gradient-to-r from-green-500 to-emerald-400">
+          <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Ready to Start Your Sustainable Fashion Journey?
+            </h2>
+            <p className="text-xl mb-8 text-green-100">
+              Join ReWear today and be part of the solution to textile waste
+            </p>
             <Link
               to="/signup"
-              className="bg-white text-green-600 px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center"
+              className="bg-white text-green-600 px-8 py-4 rounded-lg font-semibold hover:bg-green-50 transition-colors inline-flex items-center"
             >
-              Get Started Today
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-            <Link
-              to="/browse"
-              className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-600 transition-all duration-300 transform hover:-translate-y-1 inline-flex items-center justify-center"
-            >
-              Explore Items
+              Join ReWear Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 };
