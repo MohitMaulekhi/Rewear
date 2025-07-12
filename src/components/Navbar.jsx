@@ -56,34 +56,36 @@ const Navbar = () => {
           </div>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             {userLoggedIn ? (
-              <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-700">
-                  <span className="font-medium">{currentUser?.points || 0}</span> points
+              <div className="flex items-center space-x-2 md:space-x-4">
+                <div className="text-xs md:text-sm text-gray-700">
+                  <span className="font-medium">{currentUser?.points || 0}</span> pts
                 </div>
-                <div className="flex items-center space-x-2">
-                  <User className="h-5 w-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">{currentUser?.name}</span>
+                <div className="hidden sm:flex items-center space-x-2">
+                  <User className="h-4 w-4 md:h-5 md:w-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700 truncate max-w-20 md:max-w-none">
+                    {currentUser?.name}
+                  </span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center text-gray-700 hover:text-red-600 transition-colors"
+                  className="flex items-center text-gray-700 hover:text-red-600 transition-colors p-1"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 md:space-x-4">
                 <Link
                   to="/login"
-                  className="text-gray-700 hover:text-green-600 transition-colors"
+                  className="text-sm md:text-base text-gray-700 hover:text-green-600 transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 transition-colors text-sm md:text-base"
                 >
                   Sign Up
                 </Link>
@@ -91,6 +93,52 @@ const Navbar = () => {
             )}
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {userLoggedIn && (
+          <div className="md:hidden border-t border-gray-200">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              <Link
+                to="/browse"
+                className="block px-3 py-2 text-gray-700 hover:text-green-600 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                <div className="flex items-center">
+                  <Grid className="h-4 w-4 mr-2" />
+                  Browse Items
+                </div>
+              </Link>
+              <Link
+                to="/add-item"
+                className="block px-3 py-2 text-gray-700 hover:text-green-600 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                <div className="flex items-center">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </div>
+              </Link>
+              <Link
+                to="/dashboard"
+                className="block px-3 py-2 text-gray-700 hover:text-green-600 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                <div className="flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Dashboard
+                </div>
+              </Link>
+              {currentUser?.isAdmin && (
+                <Link
+                  to="/admin"
+                  className="block px-3 py-2 text-gray-700 hover:text-green-600 hover:bg-gray-50 rounded-md transition-colors"
+                >
+                  <div className="flex items-center">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Admin
+                  </div>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

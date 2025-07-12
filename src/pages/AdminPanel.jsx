@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/UseAuth";
-import { Check, X, Eye, Trash2, Users, Package, TrendingUp, Ban, Shield, RefreshCw, ArrowRightLeft } from "lucide-react";
+import { Check, X, Eye, Trash2, Users, Package, TrendingUp, Ban, Shield, RefreshCw, ArrowRightLeft, Award } from "lucide-react";
 import { 
   collection, 
   query, 
@@ -8,7 +8,8 @@ import {
   getDocs, 
   updateDoc, 
   doc, 
-  deleteDoc, 
+  deleteDoc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
@@ -79,19 +80,59 @@ const AdminPanel = () => {
         id: doc.id,
         ...doc.data()
       }));
+
+      // Fetch item details for each swap
+      const swapsWithItemDetails = await Promise.all(
+        swapsData.map(async (swap) => {
+          try {
+            // Fetch requested item details
+            const requestedItemDoc = await getDoc(doc(db, "items", swap.itemId));
+            
+            let requestedItem = null;
+            if (requestedItemDoc.exists()) {
+              requestedItem = {
+                id: requestedItemDoc.id,
+                ...requestedItemDoc.data()
+              };
+            }
+
+            // Fetch proposed item details if it exists
+            let proposedItem = null;
+            if (swap.proposedItemId) {
+              const proposedItemDoc = await getDoc(doc(db, "items", swap.proposedItemId));
+              
+              if (proposedItemDoc.exists()) {
+                proposedItem = {
+                  id: proposedItemDoc.id,
+                  ...proposedItemDoc.data()
+                };
+              }
+            }
+
+            return {
+              ...swap,
+              requestedItem,
+              proposedItem
+            };
+          } catch (error) {
+            console.error("Error fetching item details for swap:", swap.id, error);
+            return swap; // Return original swap if item fetch fails
+          }
+        })
+      );
       
       // Sort swaps by creation date (newest first)
-      swapsData.sort((a, b) => {
+      swapsWithItemDetails.sort((a, b) => {
         const aTime = a.createdAt?.toDate() || new Date(0);
         const bTime = b.createdAt?.toDate() || new Date(0);
         return bTime - aTime;
       });
       
-      setSwaps(swapsData);
+      setSwaps(swapsWithItemDetails);
 
       // Calculate stats
-      const pendingSwaps = swapsData.filter(swap => swap.status === "pending").length;
-      const completedSwaps = swapsData.filter(swap => swap.status === "accepted" || swap.status === "completed").length;
+      const pendingSwaps = swapsWithItemDetails.filter(swap => swap.status === "pending").length;
+      const completedSwaps = swapsWithItemDetails.filter(swap => swap.status === "accepted" || swap.status === "completed").length;
 
       setStats({
         totalUsers: usersData.length,
@@ -488,6 +529,16 @@ const AdminPanel = () => {
                 >
                   Rejected ({swaps.filter(s => s.status === "rejected").length})
                 </button>
+                <button
+                  onClick={() => setSwapFilter("completed")}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    swapFilter === "completed"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Completed ({swaps.filter(s => s.status === "completed").length})
+                </button>
               </div>
             </div>
             <div className="divide-y divide-gray-200">
@@ -517,18 +568,36 @@ const AdminPanel = () => {
                               {swap.requesterName} → {swap.uploaderName}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {swap.createdAt?.toDate().toLocaleDateString()}
+                              {swap.createdAt?.toDate().toLocaleDateString()} • 
+                              <span className={`ml-1 font-medium ${
+                                swap.type === "redemption" ? "text-blue-600" : "text-green-600"
+                              }`}>
+                                {swap.type === "redemption" ? "Points Redemption" : "Item Swap"}
+                              </span>
+                              {swap.type === "redemption" && swap.pointsUsed && (
+                                <span className="text-blue-600 ml-1">({swap.pointsUsed} pts)</span>
+                              )}
                             </p>
                           </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          swap.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                          swap.status === "accepted" ? "bg-green-100 text-green-800" :
-                          swap.status === "rejected" ? "bg-red-100 text-red-800" :
-                          "bg-gray-100 text-gray-800"
-                        }`}>
-                          {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            swap.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            swap.status === "accepted" ? "bg-green-100 text-green-800" :
+                            swap.status === "rejected" ? "bg-red-100 text-red-800" :
+                            swap.status === "completed" ? "bg-blue-100 text-blue-800" :
+                            "bg-gray-100 text-gray-800"
+                          }`}>
+                            {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            swap.type === "redemption" 
+                              ? "bg-blue-50 text-blue-700 border border-blue-200" 
+                              : "bg-green-50 text-green-700 border border-green-200"
+                          }`}>
+                            {swap.type === "redemption" ? "Redemption" : "Swap"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Swap Details */}
@@ -536,16 +605,63 @@ const AdminPanel = () => {
                         {/* Requested Item */}
                         <div className="bg-gray-50 rounded-lg p-3">
                           <p className="text-sm font-medium text-gray-700 mb-2">Requested Item:</p>
-                          <p className="text-sm text-gray-900 font-medium">{swap.itemTitle}</p>
-                          <p className="text-xs text-gray-500">by {swap.uploaderName}</p>
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={swap.requestedItem?.images?.[0] || "/placeholder-image.jpg"}
+                              alt={swap.requestedItem?.title || swap.itemTitle}
+                              className="w-12 h-12 object-cover rounded-lg"
+                            />
+                            <div>
+                              <p className="text-sm text-gray-900 font-medium">
+                                {swap.requestedItem?.title || swap.itemTitle}
+                              </p>
+                              <p className="text-xs text-gray-500">by {swap.uploaderName}</p>
+                              {swap.requestedItem && (
+                                <p className="text-xs text-gray-500">
+                                  {swap.requestedItem.category} • {swap.requestedItem.size}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Offered Item */}
-                        {swap.proposedItemTitle ? (
+                        {/* Offered Item or Points */}
+                        {swap.type === "redemption" ? (
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <p className="text-sm font-medium text-blue-700 mb-2">Payment Method:</p>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <Award className="h-6 w-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-blue-900 font-medium">
+                                  {swap.pointsUsed || 0} Points
+                                </p>
+                                <p className="text-xs text-blue-600">Points Transfer</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (swap.proposedItem || swap.proposedItemTitle) ? (
                           <div className="bg-blue-50 rounded-lg p-3">
                             <p className="text-sm font-medium text-blue-700 mb-2">Offered Item:</p>
-                            <p className="text-sm text-blue-900 font-medium">{swap.proposedItemTitle}</p>
-                            <p className="text-xs text-blue-600">by {swap.requesterName}</p>
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={swap.proposedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                alt={swap.proposedItem?.title || swap.proposedItemTitle}
+                                className="w-12 h-12 object-cover rounded-lg"
+                              />
+                              <div>
+                                <p className="text-sm text-blue-900 font-medium">
+                                  {swap.proposedItem?.title || swap.proposedItemTitle}
+                                </p>
+                                <p className="text-xs text-blue-600">by {swap.requesterName}</p>
+                                {swap.proposedItem && (
+                                  <p className="text-xs text-blue-600">
+                                    {swap.proposedItem.category} • {swap.proposedItem.size}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         ) : (
                           <div className="bg-yellow-50 rounded-lg p-3">

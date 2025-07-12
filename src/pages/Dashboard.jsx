@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
 import { Plus, Package, Users, Award, TrendingUp, Camera, User, Upload, X, MessageCircle, Send, Check, XCircle } from "lucide-react";
-import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp ,deleteDoc} from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, deleteDoc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -164,7 +164,6 @@ const Dashboard = () => {
           id: doc.id,
           ...doc.data()
         }));
-        console.log("Fetched items:", items);
         // Sort items by createdAt in JavaScript instead
         items.sort((a, b) => {
           const aTime = a.createdAt?.toDate() || new Date(0);
@@ -193,20 +192,65 @@ const Dashboard = () => {
           id: doc.id,
           ...doc.data()
         }));
+
+        // Fetch item details for each swap
+        const swapsWithItemDetails = await Promise.all(
+          swaps.map(async (swap) => {
+            try {
+              // Fetch requested item details
+              const requestedItemDoc = await getDoc(doc(db, "items", swap.itemId));
+              
+              let requestedItem = null;
+              if (requestedItemDoc.exists()) {
+                requestedItem = {
+                  id: requestedItemDoc.id,
+                  ...requestedItemDoc.data()
+                };
+              }
+
+              // Fetch proposed item details if it exists
+              let proposedItem = null;
+              if (swap.proposedItemId) {
+                const proposedItemDoc = await getDoc(doc(db, "items", swap.proposedItemId));
+                
+                if (proposedItemDoc.exists()) {
+                  proposedItem = {
+                    id: proposedItemDoc.id,
+                    ...proposedItemDoc.data()
+                  };
+                }
+              }
+
+              return {
+                ...swap,
+                requestedItem,
+                proposedItem
+              };
+            } catch (error) {
+              console.error("Error fetching item details for swap:", swap.id, error);
+              return swap; // Return original swap if item fetch fails
+            }
+          })
+        );
+
         // Sort swaps by createdAt in JavaScript instead
-        swaps.sort((a, b) => {
+        swapsWithItemDetails.sort((a, b) => {
           const aTime = a.createdAt?.toDate() || new Date(0);
           const bTime = b.createdAt?.toDate() || new Date(0);
           return bTime - aTime;
         });
-        setUserSwaps(swaps);
+        setUserSwaps(swapsWithItemDetails);
 
-        // Separate incoming and outgoing swap requests
-        const incomingRequests = swaps.filter(swap => 
-          swap.uploaderId === currentUser.uid && swap.status === "pending" && swap.type === "swap"
+        // Separate incoming and outgoing swap requests (excluding completed redemptions from pending lists)
+        const incomingRequests = swapsWithItemDetails.filter(swap => 
+          swap.uploaderId === currentUser.uid && 
+          swap.status === "pending" && 
+          (swap.type === "swap" || swap.type === "redemption")
         );
-        const outgoingRequests = swaps.filter(swap => 
-          swap.requesterId === currentUser.uid && swap.status === "pending" && swap.type === "swap"
+        const outgoingRequests = swapsWithItemDetails.filter(swap => 
+          swap.requesterId === currentUser.uid && 
+          swap.status === "pending" && 
+          swap.type === "swap" // Only item swaps can be outgoing, not redemptions
         );
         
         setIncomingSwaps(incomingRequests);
@@ -534,19 +578,56 @@ const Dashboard = () => {
                                 </div>
                                 <div>
                                   <p className="font-medium text-gray-900">{swap.requesterName}</p>
-                                  <p className="text-sm text-gray-500">wants to swap</p>
+                                  <p className="text-sm text-gray-500">
+                                    {swap.type === "redemption" 
+                                      ? `wants to redeem with ${swap.pointsUsed || 'points'}` 
+                                      : 'wants to swap'
+                                    }
+                                  </p>
                                 </div>
                               </div>
                               
                               <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                                <p className="text-sm font-medium text-gray-700">For your item:</p>
-                                <p className="text-sm text-gray-600">{swap.itemTitle}</p>
+                                <p className="text-sm font-medium text-gray-700 mb-2">For your item:</p>
+                                <div className="flex items-center space-x-3">
+                                  <img
+                                    src={swap.requestedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                    alt={swap.requestedItem?.title || swap.itemTitle}
+                                    className="w-12 h-12 object-cover rounded-lg"
+                                  />
+                                  <div>
+                                    <p className="text-sm text-gray-900 font-medium">
+                                      {swap.requestedItem?.title || swap.itemTitle}
+                                    </p>
+                                    {swap.requestedItem && (
+                                      <p className="text-xs text-gray-500">
+                                        {swap.requestedItem.category} • {swap.requestedItem.size}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
 
-                              {swap.proposedItemTitle && (
+                              {(swap.proposedItem || swap.proposedItemTitle) && (
                                 <div className="bg-blue-50 rounded-lg p-3 mb-3">
-                                  <p className="text-sm font-medium text-blue-700">Offering:</p>
-                                  <p className="text-sm text-blue-600">{swap.proposedItemTitle}</p>
+                                  <p className="text-sm font-medium text-blue-700 mb-2">Offering:</p>
+                                  <div className="flex items-center space-x-3">
+                                    <img
+                                      src={swap.proposedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                      alt={swap.proposedItem?.title || swap.proposedItemTitle}
+                                      className="w-12 h-12 object-cover rounded-lg"
+                                    />
+                                    <div>
+                                      <p className="text-sm text-blue-900 font-medium">
+                                        {swap.proposedItem?.title || swap.proposedItemTitle}
+                                      </p>
+                                      {swap.proposedItem && (
+                                        <p className="text-xs text-blue-600">
+                                          {swap.proposedItem.category} • {swap.proposedItem.size}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               )}
 
@@ -621,14 +702,46 @@ const Dashboard = () => {
                               </div>
                               
                               <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                                <p className="text-sm font-medium text-gray-700">Requesting:</p>
-                                <p className="text-sm text-gray-600">{swap.itemTitle}</p>
+                                <p className="text-sm font-medium text-gray-700 mb-2">Requesting:</p>
+                                <div className="flex items-center space-x-3">
+                                  <img
+                                    src={swap.requestedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                    alt={swap.requestedItem?.title || swap.itemTitle}
+                                    className="w-12 h-12 object-cover rounded-lg"
+                                  />
+                                  <div>
+                                    <p className="text-sm text-gray-900 font-medium">
+                                      {swap.requestedItem?.title || swap.itemTitle}
+                                    </p>
+                                    {swap.requestedItem && (
+                                      <p className="text-xs text-gray-500">
+                                        {swap.requestedItem.category} • {swap.requestedItem.size}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
 
-                              {swap.proposedItemTitle && (
+                              {(swap.proposedItem || swap.proposedItemTitle) && (
                                 <div className="bg-green-50 rounded-lg p-3 mb-3">
-                                  <p className="text-sm font-medium text-green-700">You offered:</p>
-                                  <p className="text-sm text-green-600">{swap.proposedItemTitle}</p>
+                                  <p className="text-sm font-medium text-green-700 mb-2">You offered:</p>
+                                  <div className="flex items-center space-x-3">
+                                    <img
+                                      src={swap.proposedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                      alt={swap.proposedItem?.title || swap.proposedItemTitle}
+                                      className="w-12 h-12 object-cover rounded-lg"
+                                    />
+                                    <div>
+                                      <p className="text-sm text-green-900 font-medium">
+                                        {swap.proposedItem?.title || swap.proposedItemTitle}
+                                      </p>
+                                      {swap.proposedItem && (
+                                        <p className="text-xs text-green-600">
+                                          {swap.proposedItem.category} • {swap.proposedItem.size}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               )}
 
@@ -688,27 +801,86 @@ const Dashboard = () => {
                               <Check className="h-4 w-4" />
                             </div>
                             <div>
-                              <p className="font-medium text-green-900">Swap Completed</p>
+                              <p className="font-medium text-green-900">
+                                {swap.type === "redemption" ? "Redemption Completed" : "Swap Completed"}
+                              </p>
                               <p className="text-sm text-green-700">
-                                {swap.requesterId === currentUser.uid ? 'You received' : 'You gave away'}
+                                {swap.type === "redemption" 
+                                  ? (swap.requesterId === currentUser.uid 
+                                      ? `You redeemed with ${swap.pointsUsed || 0} points` 
+                                      : `User paid ${swap.pointsUsed || 0} points`)
+                                  : (swap.requesterId === currentUser.uid ? 'You received' : 'You gave away')
+                                }
                               </p>
                             </div>
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                             <div className="bg-white rounded-lg p-3 border border-green-200">
-                              <p className="text-sm font-medium text-green-700">
-                                {swap.requesterId === currentUser.uid ? 'You got:' : 'You gave:'}
+                              <p className="text-sm font-medium text-green-700 mb-2">
+                                {swap.type === "redemption" 
+                                  ? "Item" 
+                                  : (swap.requesterId === currentUser.uid ? 'You got:' : 'You gave:')
+                                }
                               </p>
-                              <p className="text-sm text-green-600">{swap.itemTitle}</p>
+                              <div className="flex items-center space-x-3">
+                                <img
+                                  src={swap.requestedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                  alt={swap.requestedItem?.title || swap.itemTitle}
+                                  className="w-12 h-12 object-cover rounded-lg"
+                                />
+                                <div>
+                                  <p className="text-sm text-green-900 font-medium">
+                                    {swap.requestedItem?.title || swap.itemTitle}
+                                  </p>
+                                  {swap.requestedItem && (
+                                    <p className="text-xs text-green-600">
+                                      {swap.requestedItem.category} • {swap.requestedItem.size}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                             
-                            {swap.proposedItemTitle && (
+                            {swap.type === "redemption" ? (
                               <div className="bg-white rounded-lg p-3 border border-green-200">
-                                <p className="text-sm font-medium text-green-700">
+                                <p className="text-sm font-medium text-green-700 mb-2">
+                                  {swap.requesterId === currentUser.uid ? 'You paid:' : 'You received:'}
+                                </p>
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <Award className="h-6 w-6 text-yellow-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-green-900 font-medium">
+                                      {swap.pointsUsed || 0} Points
+                                    </p>
+                                    <p className="text-xs text-green-600">Points Transfer</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (swap.proposedItem || swap.proposedItemTitle) && (
+                              <div className="bg-white rounded-lg p-3 border border-green-200">
+                                <p className="text-sm font-medium text-green-700 mb-2">
                                   {swap.requesterId === currentUser.uid ? 'You gave:' : 'You got:'}
                                 </p>
-                                <p className="text-sm text-green-600">{swap.proposedItemTitle}</p>
+                                <div className="flex items-center space-x-3">
+                                  <img
+                                    src={swap.proposedItem?.images?.[0] || "/placeholder-image.jpg"}
+                                    alt={swap.proposedItem?.title || swap.proposedItemTitle}
+                                    className="w-12 h-12 object-cover rounded-lg"
+                                  />
+                                  <div>
+                                    <p className="text-sm text-green-900 font-medium">
+                                      {swap.proposedItem?.title || swap.proposedItemTitle}
+                                    </p>
+                                    {swap.proposedItem && (
+                                      <p className="text-xs text-green-600">
+                                        {swap.proposedItem.category} • {swap.proposedItem.size}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>

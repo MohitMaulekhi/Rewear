@@ -5,7 +5,7 @@ import { useAuth } from "../context/UseAuth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 import ProductCard from "../components/ProductCard";
-
+import Logo from "/logo.png"
 const categories = [
   { name: "Tops", emoji: "👕" },
   { name: "Bottoms", emoji: "👖" },
@@ -60,12 +60,7 @@ const LandingPage = () => {
     fetchItems();
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+
 
   const randomItems = getRandomItems(items, 6);
 
@@ -82,6 +77,7 @@ const LandingPage = () => {
             </div>
             
             <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-4 leading-tight">
+              <img src={Logo} alt="ReWear Logo" className="h-16 md:h-24 inline-block mr-2" />
               {userLoggedIn
                 ? (<>
                     <span className="block">Welcome Back <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">{currentUser?.name?.split(' ')[0] || ''}</span></span>
@@ -203,7 +199,7 @@ const LandingPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-8">
-              {randomItems.map((item, index) => (
+              {randomItems.map((item,) => (
                 <div
                   key={item.id}                >
                   <ProductCard item={item} />
