@@ -10,7 +10,7 @@ const ImageUploader = ({
   showPreview = true,
   className = "",
   style = {},
-  productDetails = {} // For AI image generation context
+  itemDetails = {} // For AI image generation context
 }) => {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -110,7 +110,7 @@ const ImageUploader = ({
     setAiError('');
     
     try {
-      const generatedImage = await geminiService.generateImage(aiPrompt, productDetails);
+      const generatedImage = await geminiService.generateImage(aiPrompt, itemDetails);
       
       const imageData = {
         url: generatedImage.url,
@@ -234,7 +234,7 @@ const ImageUploader = ({
               <div>
                 <h4 className="text-sm font-medium text-blue-800">AI Image Generation</h4>
                 <p className="text-sm text-blue-700 mt-1">
-                  Generate professional product images using Gemini 2.0 Flash Preview. Images are automatically saved to Cloudinary for optimal performance.
+                  Generate professional item images using Gemini 2.0 Flash Preview. Images are automatically saved to Cloudinary for optimal performance.
                 </p>
               </div>
             </div>
@@ -252,7 +252,7 @@ const ImageUploader = ({
               rows={3}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Be specific about the product, style, and background you want
+              Be specific about the item, style, and background you want
             </p>
           </div>
           

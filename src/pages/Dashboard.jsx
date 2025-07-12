@@ -1,15 +1,118 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
-import { Plus, Package, Users, Award, TrendingUp } from "lucide-react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { Plus, Package, Users, Award, TrendingUp, Camera, User, Upload, X } from "lucide-react";
+import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
+import toast from "react-hot-toast";
 
 const Dashboard = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, setCurrentUser } = useAuth();
   const [userItems, setUserItems] = useState([]);
   const [userSwaps, setUserSwaps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState(null);
+  const [activeAvatarTab, setActiveAvatarTab] = useState('preset'); // 'preset' or 'upload'
+  const [uploadedAvatarFile, setUploadedAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Default avatar options
+  const avatarOptions = [
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=1&backgroundColor=b6e3f4",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=2&backgroundColor=c0aede",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=3&backgroundColor=d1d4ed",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=4&backgroundColor=ffd5dc",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=5&backgroundColor=ffdfba",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=6&backgroundColor=c7ecee",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=7&backgroundColor=dcedc1",
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=8&backgroundColor=fad2e1"
+  ];
+
+  const defaultAvatar = currentUser?.avatar || avatarOptions[0];
+
+  const handleAvatarImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadedAvatarFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAvatarPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeUploadedAvatar = () => {
+    setUploadedAvatarFile(null);
+    setAvatarPreview(null);
+  };
+
+  const uploadToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
+  const handleCustomAvatarUpload = async () => {
+    if (!uploadedAvatarFile) {
+      toast.error("Please select an image first");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const avatarUrl = await uploadToCloudinary(uploadedAvatarFile);
+      await handleAvatarUpdate(avatarUrl);
+      
+      // Reset upload state
+      setUploadedAvatarFile(null);
+      setAvatarPreview(null);
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error("Failed to upload avatar. Please try again.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarUpdate = async (newAvatar) => {
+    try {
+      const userDocRef = doc(db, "users", currentUser.uid);
+      await updateDoc(userDocRef, {
+        avatar: newAvatar
+      });
+      
+      // Update the current user in context
+      setCurrentUser({ ...currentUser, avatar: newAvatar });
+      setSelectedAvatar(newAvatar);
+      setShowAvatarModal(false);
+      setActiveAvatarTab('preset'); // Reset tab
+      toast.success("Avatar updated successfully!");
+      
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      toast.error("Failed to update avatar. Please try again.");
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -128,12 +231,33 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {currentUser?.name}!
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Manage your items, track your swaps, and grow your sustainable wardrobe.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back, {currentUser?.name}!
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage your items, track your swaps, and grow your sustainable wardrobe.
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+              <div className="relative">
+                <img
+                  src={defaultAvatar}
+                  alt="Your avatar"
+                  className="w-16 h-16 rounded-full cursor-pointer hover:ring-2 hover:ring-green-500 transition-all"
+                  onClick={() => setShowAvatarModal(true)}
+                />
+                <button
+                  onClick={() => setShowAvatarModal(true)}
+                  className="absolute -bottom-1 -right-1 bg-green-600 text-white rounded-full p-1 hover:bg-green-700 transition-colors"
+                  title="Change avatar"
+                >
+                  <Camera className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -199,8 +323,8 @@ const Dashboard = () => {
             </div>
             <div className="p-6">
               {userItems.length > 0 ? (
-                <div className="space-y-4">
-                  {userItems.slice(0, 3).map((item) => (
+                <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+                  {userItems.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg">
                       <img
                         src={item.images?.[0] || "/placeholder-image.jpg"}
@@ -228,11 +352,6 @@ const Dashboard = () => {
                       </div>
                     </div>
                   ))}
-                  {userItems.length > 3 && (
-                    <p className="text-sm text-gray-500 text-center pt-2">
-                      And {userItems.length - 3} more items...
-                    </p>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -299,6 +418,163 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Avatar Selection Modal */}
+        {showAvatarModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Choose Your Avatar</h3>
+                <button
+                  onClick={() => {
+                    setShowAvatarModal(false);
+                    setActiveAvatarTab('preset');
+                    setSelectedAvatar(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* Tab Navigation */}
+              <div className="flex space-x-1 mb-6">
+                <button
+                  onClick={() => setActiveAvatarTab('preset')}
+                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+                    activeAvatarTab === 'preset'
+                      ? 'bg-green-100 text-green-700 border border-green-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <User className="h-4 w-4 inline mr-2" />
+                  Preset Avatars
+                </button>
+                <button
+                  onClick={() => setActiveAvatarTab('upload')}
+                  className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-colors ${
+                    activeAvatarTab === 'upload'
+                      ? 'bg-green-100 text-green-700 border border-green-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Upload className="h-4 w-4 inline mr-2" />
+                  Upload Custom
+                </button>
+              </div>
+              
+              {/* Tab Content */}
+              {activeAvatarTab === 'preset' ? (
+                <>
+                  <div className="grid grid-cols-4 gap-3 mb-6">
+                    {avatarOptions.map((avatar, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedAvatar(avatar)}
+                        className={`relative rounded-full overflow-hidden border-2 transition-all ${
+                          selectedAvatar === avatar || (selectedAvatar === null && avatar === defaultAvatar)
+                            ? 'border-green-500 ring-2 ring-green-200' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <img
+                          src={avatar}
+                          alt={`Avatar option ${index + 1}`}
+                          className="w-16 h-16 object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={() => {
+                        setShowAvatarModal(false);
+                        setActiveAvatarTab('preset');
+                        setSelectedAvatar(null);
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleAvatarUpdate(selectedAvatar || defaultAvatar)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+                    >
+                      Save Avatar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Upload your own avatar image. Recommended size: 200x200px or larger.
+                    </p>
+                    
+                    {avatarPreview ? (
+                      <div className="relative w-32 mx-auto">
+                        <img
+                          src={avatarPreview}
+                          alt="Avatar preview"
+                          className="w-32 h-32 object-cover rounded-full border-2 border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeUploadedAvatar}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 cursor-pointer w-32 h-32 mx-auto flex flex-col items-center justify-center">
+                        <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-500">Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarImageSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={() => {
+                        setShowAvatarModal(false);
+                        setActiveAvatarTab('preset');
+                        setSelectedAvatar(null);
+                        removeUploadedAvatar();
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                    >
+                      Cancel
+                    </button>
+                    {avatarPreview && (
+                      <button
+                        onClick={handleCustomAvatarUpload}
+                        disabled={uploadingAvatar}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                      >
+                        {uploadingAvatar ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Uploading...
+                          </>
+                        ) : (
+                          'Save Avatar'
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

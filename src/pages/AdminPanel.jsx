@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/UseAuth";
-import { Check, X, Eye, Trash2, Users, Package, TrendingUp } from "lucide-react";
+import { Check, X, Eye, Trash2, Users, Package, TrendingUp, Ban, Shield } from "lucide-react";
 import { 
   collection, 
   query, 
@@ -143,6 +143,22 @@ const AdminPanel = () => {
     } catch (error) {
       console.error("Error updating user admin status:", error);
       toast.error("Failed to update user admin status");
+    }
+  };
+
+  const handleToggleBanUser = async (userId, isBanned) => {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        banned: !isBanned,
+        bannedAt: !isBanned ? new Date() : null,
+        bannedBy: !isBanned ? currentUser.uid : null
+      });
+
+      toast.success(`User ${!isBanned ? 'banned' : 'unbanned'} successfully`);
+      fetchAdminData();
+    } catch (error) {
+      console.error("Error toggling user ban:", error);
+      toast.error("Failed to update user ban status");
     }
   };
 
@@ -384,39 +400,48 @@ const AdminPanel = () => {
             </div>
             <div className="divide-y divide-gray-200">
               {users.map((user) => (
-                <div key={user.id} className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-semibold">
-                        {user.name?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{user.name}</h3>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                      <p className="text-sm text-gray-500">
-                        Joined: {new Date(user.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium text-green-600">{user.points || 0} pts</p>
-                    </div>
-                    <div className="text-center">
-                      {user.isAdmin ? (
-                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                          Admin
+                <div key={user.id} className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-green-600 font-semibold text-sm sm:text-base">
+                          {user.name?.charAt(0).toUpperCase()}
                         </span>
-                      ) : (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
-                          User
-                        </span>
-                      )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-900 truncate">{user.name}</h3>
+                        <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                        <p className="text-xs sm:text-sm text-gray-500">
+                          Joined: {new Date(user.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      {user.id !== currentUser.uid && (
+                    
+                    <div className="flex flex-row sm:flex-col items-center justify-between sm:justify-center sm:text-center space-x-4 sm:space-x-0">
+                      <p className="font-medium text-green-600 text-sm sm:text-base">{user.points || 0} pts</p>
+                      <div className="flex flex-wrap gap-1">
+                        {user.isAdmin ? (
+                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                            User
+                          </span>
+                        )}
+                        {user.banned && (
+                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                            Banned
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {user.id !== currentUser.uid && (
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => handleToggleUserAdmin(user.id, user.isAdmin)}
-                          className={`px-3 py-1 rounded text-sm font-medium ${
+                          className={`px-3 py-2 rounded text-xs sm:text-sm font-medium text-center ${
                             user.isAdmin
                               ? "bg-red-100 text-red-700 hover:bg-red-200"
                               : "bg-purple-100 text-purple-700 hover:bg-purple-200"
@@ -424,8 +449,28 @@ const AdminPanel = () => {
                         >
                           {user.isAdmin ? "Remove Admin" : "Make Admin"}
                         </button>
-                      )}
-                    </div>
+                        <button
+                          onClick={() => handleToggleBanUser(user.id, user.banned)}
+                          className={`px-3 py-2 rounded text-xs sm:text-sm font-medium flex items-center justify-center ${
+                            user.banned
+                              ? "bg-green-100 text-green-700 hover:bg-green-200"
+                              : "bg-red-100 text-red-700 hover:bg-red-200"
+                          }`}
+                        >
+                          {user.banned ? (
+                            <>
+                              <Shield className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Unban
+                            </>
+                          ) : (
+                            <>
+                              <Ban className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                              Ban
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

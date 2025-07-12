@@ -26,6 +26,17 @@ export const AuthProvider = ({ children }) => {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          
+          // Check if user is banned
+          if (userData.banned) {
+            toast.error("Your account has been banned. Please contact support.");
+            await signOut(auth);
+            setCurrentUser(null);
+            setUserLoggedIn(false);
+            setLoading(false);
+            return;
+          }
+          
           const userObj = {
             uid: user.uid,
             email: user.email,
@@ -97,6 +108,14 @@ export const AuthProvider = ({ children }) => {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        
+        // Check if user is banned before allowing login
+        if (userData.banned) {
+          await signOut(auth); // Sign out immediately
+          toast.error("Your account has been banned. Please contact support.");
+          throw new Error("Account is banned");
+        }
+        
         const userObj = {
           uid: user.uid,
           email: user.email,
