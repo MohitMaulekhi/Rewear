@@ -126,14 +126,33 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {currentUser?.name}!
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Manage your items, track your swaps, and grow your sustainable wardrobe.
-          </p>
+        {/* Header + Quick Actions */}
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome back, {currentUser?.name}!
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Manage your items, track your swaps, and grow your sustainable wardrobe.
+            </p>
+          </div>
+          {/* Quick Actions */}
+          <div className="flex gap-4 items-center">
+            <Link
+              to="/add-item"
+              className="flex items-center p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
+            >
+              <Plus className="h-6 w-6 text-gray-400" />
+              <span className="ml-2 text-sm font-medium text-gray-900">Add New Item</span>
+            </Link>
+            <Link
+              to="/browse"
+              className="flex items-center p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+            >
+              <Package className="h-6 w-6 text-gray-400" />
+              <span className="ml-2 text-sm font-medium text-gray-900">Browse Items</span>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -154,38 +173,6 @@ const Dashboard = () => {
               </div>
             );
           })}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link
-                to="/add-item"
-                className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
-              >
-                <Plus className="h-8 w-8 text-gray-400" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">Add New Item</p>
-                  <p className="text-sm text-gray-500">List an item for swap</p>
-                </div>
-              </Link>
-              
-              <Link
-                to="/browse"
-                className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
-              >
-                <Package className="h-8 w-8 text-gray-400" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">Browse Items</p>
-                  <p className="text-sm text-gray-500">Find items to swap</p>
-                </div>
-              </Link>
-            </div>
-          </div>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
