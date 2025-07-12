@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, Grid, List } from "lucide-react";
+import { Search, Filter, Grid, List, ChevronLeft, ChevronRight } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 
@@ -13,6 +13,11 @@ const BrowseItemsPage = () => {
   const [selectedCondition, setSelectedCondition] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState("grid");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
+  const [paginatedItems, setPaginatedItems] = useState([]);
 
   const categories = [
     "Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", 
@@ -92,16 +97,52 @@ const BrowseItemsPage = () => {
       }
 
       setFilteredItems(filtered);
+      setCurrentPage(1); // Reset to first page when filters change
     };
 
     filterAndSortItems();
   }, [items, searchTerm, selectedCategory, selectedCondition, sortBy]);
+
+  // Pagination useEffect
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedItems(filteredItems.slice(startIndex, endIndex));
+  }, [filteredItems, currentPage, itemsPerPage]);
+
+  // Pagination helpers
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, filteredItems.length);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getPaginationRange = () => {
+    const range = [];
+    const showPages = 5; // Number of page buttons to show
+    let start = Math.max(1, currentPage - Math.floor(showPages / 2));
+    let end = Math.min(totalPages, start + showPages - 1);
+
+    // Adjust start if we're near the end
+    if (end - start < showPages - 1) {
+      start = Math.max(1, end - showPages + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+    return range;
+  };
 
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedCondition("");
     setSortBy("newest");
+    setCurrentPage(1);
   };
 
   if (loading) {
@@ -187,7 +228,11 @@ const BrowseItemsPage = () => {
           {/* Results and View Toggle */}
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              Showing {filteredItems.length} of {items.length} items
+              {filteredItems.length > 0 ? (
+                <>Showing {startItem}-{endItem} of {filteredItems.length} items</>
+              ) : (
+                <>No items found</>
+              )}
             </p>
             <div className="flex space-x-2">
               <button
@@ -208,12 +253,13 @@ const BrowseItemsPage = () => {
 
         {/* Items Grid/List */}
         {filteredItems.length > 0 ? (
-          <div className={`grid gap-6 ${
-            viewMode === "grid" 
-              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-              : "grid-cols-1"
-          }`}>
-            {filteredItems.map((item) => (
+          <>
+            <div className={`grid gap-6 ${
+              viewMode === "grid" 
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+                : "grid-cols-1"
+            }`}>
+              {paginatedItems.map((item) => (
               <Link
                 key={item.id}
                 to={`/item/${item.id}`}
@@ -258,7 +304,48 @@ const BrowseItemsPage = () => {
                 </div>
               </Link>
             ))}
-          </div>
+            </div>
+
+            {/* Pagination */}
+            {filteredItems.length > itemsPerPage && (
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-sm text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    {getPaginationRange().map(page => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 py-1 rounded-lg ${
+                          page === currentPage 
+                            ? "bg-green-600 text-white" 
+                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <Filter className="h-16 w-16 text-gray-400 mx-auto mb-4" />
