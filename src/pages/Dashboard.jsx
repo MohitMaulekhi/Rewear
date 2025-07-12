@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
 import { Plus, Package, Users, Award, TrendingUp, Camera, User, Upload, X, MessageCircle, Send, Check, XCircle } from "lucide-react";
-import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp ,deleteDoc} from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -125,7 +125,7 @@ const Dashboard = () => {
       setUserItems((prev) => prev.map(item => item.id === itemId ? { ...item, status: "withdrawn" } : item));
       toast.success("Request withdrawn successfully.");
     } catch (error) {
-      toast.error("Failed to withdraw request. Please try again.");
+      toast.error("Failed to withdraw request. Please try again." + error.message);
     }
   };
 
@@ -139,7 +139,7 @@ const Dashboard = () => {
       setUserItems((prev) => prev.filter(item => item.id !== itemId));
       toast.success("Item deleted successfully");
     } catch (error) {
-      toast.error("Failed to delete item. Please try again.");
+      toast.error("Failed to delete item. Please try again." + error.message);
     }
   };
 
