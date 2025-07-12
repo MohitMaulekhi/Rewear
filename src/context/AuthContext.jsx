@@ -63,6 +63,8 @@ export const AuthProvider = ({ children }) => {
       const userProfileData = {
         email: user.email,
         ...additionalData,
+        points: 100, // Starting points for new users
+        isAdmin: false, // Default to non-admin
         createdAt: new Date().toISOString(),
       };
 
