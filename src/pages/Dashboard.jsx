@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
 import { Plus, Package, Users, Award, TrendingUp } from "lucide-react";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 
 const Dashboard = () => {
@@ -13,37 +13,69 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.log("No current user found");
+        return;
+      }
+
+      console.log("Current user object:", currentUser);
 
       try {
-        // Fetch user's items
+        // Fetch user's items - Get ALL items regardless of status
+        console.log("Current user UID:", currentUser.uid);
         const itemsQuery = query(
           collection(db, "items"),
-          where("uploaderId", "==", currentUser.uid),
-          orderBy("createdAt", "desc")
+          where("uploaderId", "==", currentUser.uid)
         );
         const itemsSnapshot = await getDocs(itemsQuery);
         const items = itemsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+        console.log("Fetched items:", items);
+        // Sort items by createdAt in JavaScript instead
+        items.sort((a, b) => {
+          const aTime = a.createdAt?.toDate() || new Date(0);
+          const bTime = b.createdAt?.toDate() || new Date(0);
+          return bTime - aTime;
+        });
         setUserItems(items);
+
+        // Debug: Try to fetch all items to see what's in the collection
+        const allItemsQuery = query(collection(db, "items"));
+        const allItemsSnapshot = await getDocs(allItemsQuery);
+        const allItems = allItemsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          uploaderId: doc.data().uploaderId,
+          title: doc.data().title
+        }));
+        console.log("All items in collection:", allItems);
 
         // Fetch user's swaps
         const swapsQuery = query(
           collection(db, "swaps"),
-          where("participants", "array-contains", currentUser.uid),
-          orderBy("createdAt", "desc")
+          where("participants", "array-contains", currentUser.uid)
         );
         const swapsSnapshot = await getDocs(swapsQuery);
         const swaps = swapsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+        // Sort swaps by createdAt in JavaScript instead
+        swaps.sort((a, b) => {
+          const aTime = a.createdAt?.toDate() || new Date(0);
+          const bTime = b.createdAt?.toDate() || new Date(0);
+          return bTime - aTime;
+        });
         setUserSwaps(swaps);
 
       } catch (error) {
         console.error("Error fetching user data:", error);
+        console.error("Error details:", {
+          code: error.code,
+          message: error.message,
+          stack: error.stack
+        });
       } finally {
         setLoading(false);
       }
@@ -178,7 +210,18 @@ const Dashboard = () => {
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{item.title}</h3>
                         <p className="text-sm text-gray-500">{item.category}</p>
-                        <p className="text-sm text-gray-500">Status: {item.status || "Available"}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            item.status === "approved" ? "bg-green-100 text-green-800" :
+                            item.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            "bg-red-100 text-red-800"
+                          }`}>
+                            {item.status || "pending"}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {item.available ? "Available" : "Not Available"}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-green-600">{item.points} pts</p>

@@ -9,7 +9,6 @@ import {
   updateDoc, 
   doc, 
   deleteDoc, 
-  orderBy 
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
@@ -40,7 +39,6 @@ const AdminPanel = () => {
       const pendingQuery = query(
         collection(db, "items"),
         where("status", "==", "pending"),
-        orderBy("createdAt", "desc")
       );
       const pendingSnapshot = await getDocs(pendingQuery);
       const pendingData = pendingSnapshot.docs.map(doc => ({
@@ -52,7 +50,6 @@ const AdminPanel = () => {
       // Fetch all items
       const allItemsQuery = query(
         collection(db, "items"),
-        orderBy("createdAt", "desc")
       );
       const allItemsSnapshot = await getDocs(allItemsQuery);
       const allItemsData = allItemsSnapshot.docs.map(doc => ({

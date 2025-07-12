@@ -13,7 +13,6 @@ const ItemDetailPage = () => {
   const [item, setItem] = useState(null);
   const [uploader, setUploader] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [swapLoading, setSwapLoading] = useState(false);
   const [redeemLoading, setRedeemLoading] = useState(false);
 
@@ -200,35 +199,15 @@ const ItemDetailPage = () => {
         </button>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Image Gallery */}
+          {/* Image Display - Single Image */}
           <div className="space-y-4">
             <div className="aspect-square rounded-lg overflow-hidden bg-gray-200">
               <img
-                src={item.images?.[currentImageIndex] || "/placeholder-image.jpg"}
+                src={item.images?.[0] || "/placeholder-image.jpg"}
                 alt={item.title}
                 className="w-full h-full object-cover"
               />
             </div>
-            
-            {item.images && item.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {item.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 ${
-                      currentImageIndex === index ? "border-green-500" : "border-gray-200"
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${item.title} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Item Details */}

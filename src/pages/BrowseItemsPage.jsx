@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, Grid, List } from "lucide-react";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 
 const BrowseItemsPage = () => {
@@ -30,7 +30,6 @@ const BrowseItemsPage = () => {
           collection(db, "items"),
           where("status", "==", "approved"),
           where("available", "==", true),
-          orderBy("createdAt", "desc")
         );
         const itemsSnapshot = await getDocs(itemsQuery);
         const itemsData = itemsSnapshot.docs.map(doc => ({

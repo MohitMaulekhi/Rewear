@@ -48,21 +48,26 @@ const AddItemPage = () => {
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     
-    if (files.length + selectedImages.length > 5) {
-      toast.error("Maximum 5 images allowed");
+    // Only allow 1 image
+    if (files.length > 1) {
+      toast.error("Only 1 image allowed");
       return;
     }
 
-    setSelectedImages([...selectedImages, ...files]);
+    if (selectedImages.length > 0) {
+      toast.error("Only 1 image allowed. Remove the existing image first.");
+      return;
+    }
 
-    // Create previews
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviews(prev => [...prev, e.target.result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setSelectedImages(files);
+
+    // Create preview for single image
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreviews([e.target.result]);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = (index) => {
@@ -97,24 +102,22 @@ const AddItemPage = () => {
     e.preventDefault();
     
     if (selectedImages.length === 0) {
-      toast.error("Please add at least one image");
+      toast.error("Please add an image");
       return;
     }
 
     setLoading(true);
 
     try {
-      // Upload images to Cloudinary
-      const imageUrls = await Promise.all(
-        selectedImages.map(file => uploadToCloudinary(file))
-      );
+      // Upload single image to Cloudinary
+      const imageUrl = await uploadToCloudinary(selectedImages[0]);
 
       // Create item document
       const itemData = {
         ...formData,
         points: parseInt(formData.points),
         tags: formData.tags.split(",").map(tag => tag.trim()).filter(tag => tag),
-        images: imageUrls,
+        images: [imageUrl], // Single image in array
         uploaderId: currentUser.uid,
         uploaderName: currentUser.name,
         uploaderEmail: currentUser.email,
@@ -151,33 +154,30 @@ const AddItemPage = () => {
             {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Images (Max 5) *
+                Image (1 required) *
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative">
+              <div className="space-y-4">
+                {imagePreviews.length > 0 ? (
+                  <div className="relative w-48">
                     <img
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border-2 border-gray-300"
+                      src={imagePreviews[0]}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg border-2 border-gray-300"
                     />
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
+                      onClick={() => removeImage(0)}
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                ))}
-                
-                {selectedImages.length < 5 && (
-                  <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 cursor-pointer h-32 flex flex-col items-center justify-center">
-                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                ) : (
+                  <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 cursor-pointer w-48 h-48 flex flex-col items-center justify-center">
+                    <Upload className="h-12 w-12 text-gray-400 mb-4" />
                     <span className="text-sm text-gray-500">Add Image</span>
                     <input
                       type="file"
-                      multiple
                       accept="image/*"
                       onChange={handleImageSelect}
                       className="hidden"
