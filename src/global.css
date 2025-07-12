@@ -1,0 +1,9 @@
+/* Set global font */
+* {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Set cursor to pointer on hover for all buttons */
+button:hover {
+  cursor: pointer;
+}
