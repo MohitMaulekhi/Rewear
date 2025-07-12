@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
 import { Plus, Package, Users, Award, TrendingUp, Camera, User, Upload, X } from "lucide-react";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [uploadedAvatarFile, setUploadedAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const navigate = useNavigate();
 
   // Default avatar options
   const avatarOptions = [
@@ -112,6 +113,31 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error updating avatar:", error);
       toast.error("Failed to update avatar. Please try again.");
+    }
+  };
+
+  const handleWithdrawRequest = async (itemId) => {
+    try {
+      const itemRef = doc(db, "items", itemId);
+      await updateDoc(itemRef, { status: "withdrawn" });
+      setUserItems((prev) => prev.map(item => item.id === itemId ? { ...item, status: "withdrawn" } : item));
+      toast.success("Request withdrawn successfully.");
+    } catch (error) {
+      toast.error("Failed to withdraw request. Please try again.");
+    }
+  };
+
+  // Delete item handler
+  const handleDeleteItem = async (itemId) => {
+    if (!window.confirm("Are you sure you want to delete this item? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "items", itemId));
+      setUserItems((prev) => prev.filter(item => item.id !== itemId));
+      toast.success("Item deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete item. Please try again.");
     }
   };
 
@@ -307,6 +333,7 @@ const Dashboard = () => {
                           <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                             item.status === "approved" ? "bg-green-100 text-green-800" :
                             item.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            item.status === "withdrawn" ? "bg-gray-100 text-gray-500" :
                             "bg-red-100 text-red-800"
                           }`}>
                             {item.status || "pending"}
@@ -316,8 +343,35 @@ const Dashboard = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-2">
                         <p className="text-sm font-medium text-green-600">{item.points} pts</p>
+                        <div className="flex gap-2">
+                          {/* Edit button: only if not withdrawn or rejected */}
+                          {item.status !== "withdrawn" && item.status !== "rejected" && (
+                            <button
+                              onClick={() => navigate(`/add-item?edit=${item.id}`)}
+                              className="px-3 py-1 text-xs rounded bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 font-semibold transition"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {/* Delete button: always show */}
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="px-3 py-1 text-xs rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-semibold transition"
+                          >
+                            Delete
+                          </button>
+                          {/* Withdraw button: only if pending */}
+                          {item.status === "pending" && (
+                            <button
+                              onClick={() => handleWithdrawRequest(item.id)}
+                              className="px-3 py-1 text-xs rounded bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 font-semibold transition"
+                            >
+                              Withdraw Request
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
