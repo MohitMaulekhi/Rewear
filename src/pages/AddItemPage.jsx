@@ -7,7 +7,7 @@ import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
 const AddItemPage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, updateUserPoints } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,9 +33,12 @@ const AddItemPage = () => {
   ];
 
   const sizes = [
-    "XS", "S", "M", "L", "XL", "XXL", "XXXL",
-    "US 6", "US 7", "US 8", "US 9", "US 10", "US 11", "US 12",
-    "One Size"
+    // Indian clothing sizes
+    "XS (28)", "S (30)", "M (32)", "L (34)", "XL (36)", "XXL (38)", "XXXL (40)", "XXXXL (42)",
+    // Indian shoe sizes
+    "Shoe 3", "Shoe 4", "Shoe 5", "Shoe 6", "Shoe 7", "Shoe 8", "Shoe 9", "Shoe 10", "Shoe 11", "Shoe 12",
+    // Indian traditional sizes
+    "Free Size", "One Size", "Adjustable"
   ];
 
   const handleChange = (e) => {
@@ -128,6 +131,9 @@ const AddItemPage = () => {
       };
 
       await addDoc(collection(db, "items"), itemData);
+      
+      // Give user 5 points for listing an item
+      await updateUserPoints(5, `Listed item: ${itemData.title}`);
       
       toast.success("Item submitted for review! It will be available after admin approval.");
       navigate("/dashboard");

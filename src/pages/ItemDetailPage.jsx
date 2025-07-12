@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 
 const ItemDetailPage = () => {
   const { id } = useParams();
-  const { currentUser, userLoggedIn } = useAuth();
+  const { currentUser, userLoggedIn, updateUserPoints, checkSufficientPoints } = useAuth();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [uploader, setUploader] = useState(null);
@@ -96,7 +96,7 @@ const ItemDetailPage = () => {
       return;
     }
 
-    if (currentUser.points < item.points) {
+    if (!checkSufficientPoints(item.points)) {
       toast.error(`You need ${item.points - currentUser.points} more points to redeem this item`);
       return;
     }
@@ -104,12 +104,16 @@ const ItemDetailPage = () => {
     setRedeemLoading(true);
 
     try {
-      // Deduct points from current user
-      await updateDoc(doc(db, "users", currentUser.uid), {
-        points: increment(-item.points)
-      });
+      // Use the new points management system
+      const pointsDeducted = await updateUserPoints(-item.points, `Redeemed item: ${item.title}`);
+      
+      if (!pointsDeducted) {
+        // Points deduction failed - this error message is already shown by updateUserPoints
+        setRedeemLoading(false);
+        return;
+      }
 
-      // Add points to item uploader
+      // Add points to item uploader (direct database update)
       await updateDoc(doc(db, "users", item.uploaderId), {
         points: increment(item.points)
       });
@@ -142,7 +146,15 @@ const ItemDetailPage = () => {
       navigate("/dashboard");
     } catch (error) {
       console.error("Error redeeming item:", error);
-      toast.error("Failed to redeem item");
+      
+      // If points were deducted but redemption failed, try to refund points
+      try {
+        await updateUserPoints(item.points, `Refund for failed redemption: ${item.title}`);
+        toast.error("Redemption failed. Points have been refunded.");
+      } catch (refundError) {
+        console.error("Error refunding points:", refundError);
+        toast.error("Redemption failed. Please contact support about your points.");
+      }
     } finally {
       setRedeemLoading(false);
     }

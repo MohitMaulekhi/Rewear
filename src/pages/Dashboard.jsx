@@ -20,6 +20,7 @@ const Dashboard = () => {
 
   // Default avatar options
   const avatarOptions = [
+    "https://api.dicebear.com/7.x/avataaars/svg?seed=2&backgroundColor=c0aede",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=1&backgroundColor=b6e3f4",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=2&backgroundColor=c0aede",
     "https://api.dicebear.com/7.x/avataaars/svg?seed=3&backgroundColor=d1d4ed",

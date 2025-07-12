@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, signInWithPopup } from "firebase/auth";
 import { AuthContext } from "./UseAuth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -172,6 +172,129 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserPoints = async (pointsChange, reason = "") => {
+    console.log(`Attempting to update points: ${pointsChange}, reason: ${reason}`);
+    console.log(`Current user points: ${currentUser?.points}`);
+    
+    if (!currentUser) {
+      console.error("No current user found for points update");
+      return false;
+    }
+
+    const newPoints = currentUser.points + pointsChange;
+    console.log(`Calculated new points: ${newPoints}`);
+    
+    // Prevent negative points
+    if (newPoints < 0) {
+      console.log("Points would be negative, rejecting transaction");
+      toast.error("Insufficient points for this transaction");
+      return false;
+    }
+
+    try {
+      const userDocRef = doc(db, "users", currentUser.uid);
+      
+      console.log("Updating database with new points:", newPoints);
+      // Update database first
+      await updateDoc(userDocRef, {
+        points: newPoints,
+        lastPointsUpdate: new Date().toISOString(),
+        lastPointsReason: reason
+      });
+      
+      // Update local state after successful database update
+      try {
+        const updatedUser = {
+          ...currentUser,
+          points: newPoints,
+          lastPointsUpdate: new Date().toISOString(),
+          lastPointsReason: reason
+        };
+        setCurrentUser(updatedUser);
+        
+      } catch (stateError) {
+        console.error("Error updating local state:", stateError);
+        
+        // Even if local state fails, the database was updated successfully
+        // Try a simpler state update
+        try {
+          setCurrentUser(prev => ({ ...prev, points: newPoints }));
+          
+        } catch (fallbackError) {
+          console.error("Fallback state update also failed:", fallbackError);
+          // As a last resort, refresh from database
+          
+          await refreshUserPointsFromDB();
+        }
+      }
+      
+      // Show success message
+      try {
+        if (pointsChange > 0) {
+          toast.success(`+${pointsChange} points earned! ${reason}`);
+        } else {
+          toast.info(`${Math.abs(pointsChange)} points spent. ${reason}`);
+        }
+        
+      } catch (toastError) {
+        console.error("Error showing toast:", toastError);
+        // Toast error shouldn't affect the return value
+      }
+      
+      
+      return true;
+    } catch (error) {
+      
+      console.error("Error message:", error.message);
+      
+      
+      // Try to provide more specific error messages
+      if (error.code === 'permission-denied') {
+        toast.error("Permission denied. Please check your account status.");
+      } else if (error.code === 'not-found') {
+        toast.error("User account not found. Please try logging in again.");
+      } else {
+        toast.error("Failed to update points. Please try again.");
+      }
+      return false;
+    }
+  };
+
+  const checkSufficientPoints = (requiredPoints) => {
+    if (!currentUser) return false;
+    return currentUser.points >= requiredPoints;
+  };
+
+  const refreshUserPoints = async () => {
+    if (!currentUser) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setCurrentUser({ ...currentUser, points: userData.points });
+      }
+    } catch (error) {
+      console.error("Error refreshing points:", error);
+    }
+  };
+
+  // Alternative function to refresh points from database
+  const refreshUserPointsFromDB = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setCurrentUser(prev => ({ ...prev, points: userData.points }));
+        console.log("Points refreshed from database:", userData.points);
+      }
+    } catch (error) {
+      console.error("Error refreshing points from database:", error);
+    }
+  };
+
   const value = {
     currentUser,
     userLoggedIn,
@@ -181,6 +304,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     loading,
     googleSignIn,
+    updateUserPoints,
+    checkSufficientPoints,
+    refreshUserPoints,
+  
   };
 
   return (
