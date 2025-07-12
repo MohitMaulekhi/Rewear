@@ -280,38 +280,6 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link
-                to="/add-item"
-                className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
-              >
-                <Plus className="h-8 w-8 text-gray-400" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">Add New Item</p>
-                  <p className="text-sm text-gray-500">List an item for swap</p>
-                </div>
-              </Link>
-              
-              <Link
-                to="/browse"
-                className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
-              >
-                <Package className="h-8 w-8 text-gray-400" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">Browse Items</p>
-                  <p className="text-sm text-gray-500">Find items to swap</p>
-                </div>
-              </Link>
-            </div>
-          </div>
-        </div>
-
         <div className="grid lg:grid-cols-2 gap-8">
           {/* My Items */}
           <div className="bg-white rounded-lg shadow">
