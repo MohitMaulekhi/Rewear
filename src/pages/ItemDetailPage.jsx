@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
-import { Heart, Share2, ArrowLeft, MessageCircle, Star } from "lucide-react";
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, increment } from "firebase/firestore";
+import { Heart, Share2, ArrowLeft, MessageCircle, Star, X, Package } from "lucide-react";
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, increment, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -15,6 +15,11 @@ const ItemDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [swapLoading, setSwapLoading] = useState(false);
   const [redeemLoading, setRedeemLoading] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [userItems, setUserItems] = useState([]);
+  const [selectedSwapItem, setSelectedSwapItem] = useState(null);
+  const [swapMessage, setSwapMessage] = useState("");
+  const [loadingUserItems, setLoadingUserItems] = useState(false);
 
   useEffect(() => {
     const fetchItemDetails = async () => {
@@ -44,7 +49,31 @@ const ItemDetailPage = () => {
     fetchItemDetails();
   }, [id, navigate]);
 
-  const handleSwapRequest = async () => {
+  const fetchUserItems = async () => {
+    if (!userLoggedIn) return;
+    
+    setLoadingUserItems(true);
+    try {
+      const userItemsQuery = query(
+        collection(db, "items"),
+        where("uploaderId", "==", currentUser.uid),
+        where("status", "==", "approved"),
+        where("available", "==", true)
+      );
+      const userItemsSnapshot = await getDocs(userItemsQuery);
+      const items = userItemsSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(userItem => userItem.id !== id); // Don't include the current item
+      setUserItems(items);
+    } catch (error) {
+      console.error("Error fetching user items:", error);
+      toast.error("Failed to load your items");
+    } finally {
+      setLoadingUserItems(false);
+    }
+  };
+
+  const openSwapModal = () => {
     if (!userLoggedIn) {
       toast.error("Please login to make a swap request");
       navigate("/login");
@@ -56,11 +85,15 @@ const ItemDetailPage = () => {
       return;
     }
 
+    setShowSwapModal(true);
+    fetchUserItems();
+  };
+
+  const handleSwapRequest = async () => {
     setSwapLoading(true);
 
     try {
-      // Create swap request
-      await addDoc(collection(db, "swaps"), {
+      const swapData = {
         requesterId: currentUser.uid,
         requesterName: currentUser.name,
         requesterEmail: currentUser.email,
@@ -73,9 +106,24 @@ const ItemDetailPage = () => {
         type: "swap",
         createdAt: serverTimestamp(),
         participants: [currentUser.uid, item.uploaderId]
-      });
+      };
+
+      // Add proposed item and message if provided
+      if (selectedSwapItem) {
+        swapData.proposedItemId = selectedSwapItem.id;
+        swapData.proposedItemTitle = selectedSwapItem.title;
+      }
+
+      if (swapMessage.trim()) {
+        swapData.message = swapMessage.trim();
+      }
+
+      await addDoc(collection(db, "swaps"), swapData);
 
       toast.success("Swap request sent! The item owner will be notified.");
+      setShowSwapModal(false);
+      setSelectedSwapItem(null);
+      setSwapMessage("");
     } catch (error) {
       console.error("Error creating swap request:", error);
       toast.error("Failed to send swap request");
@@ -323,21 +371,11 @@ const ItemDetailPage = () => {
             {userLoggedIn && currentUser.uid !== item.uploaderId && item.available && (
               <div className="space-y-3">
                 <button
-                  onClick={handleSwapRequest}
-                  disabled={swapLoading}
-                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  onClick={openSwapModal}
+                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
                 >
-                  {swapLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Sending Request...
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Request to Swap
-                    </>
-                  )}
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Request to Swap
                 </button>
 
                 <button
@@ -396,6 +434,155 @@ const ItemDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Swap Request Modal */}
+      {showSwapModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Request Swap for "{item?.title}"
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowSwapModal(false);
+                    setSelectedSwapItem(null);
+                    setSwapMessage("");
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Target Item Info */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 className="font-medium text-gray-900 mb-2">You're requesting:</h4>
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={item?.images?.[0] || "/placeholder-image.jpg"}
+                    alt={item?.title}
+                    className="w-16 h-16 object-cover rounded-lg"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900">{item?.title}</p>
+                    <p className="text-sm text-gray-500">{item?.category} • {item?.size}</p>
+                    <p className="text-sm text-green-600 font-medium">{item?.points} points</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Select Item to Offer */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-3">
+                  Select one of your items to offer (optional):
+                </h4>
+                
+                {loadingUserItems ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                  </div>
+                ) : userItems.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                    {userItems.map((userItem) => (
+                      <div
+                        key={userItem.id}
+                        onClick={() => setSelectedSwapItem(
+                          selectedSwapItem?.id === userItem.id ? null : userItem
+                        )}
+                        className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                          selectedSwapItem?.id === userItem.id
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={userItem.images?.[0] || "/placeholder-image.jpg"}
+                            alt={userItem.title}
+                            className="w-12 h-12 object-cover rounded-lg"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              {userItem.title}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {userItem.category} • {userItem.size}
+                            </p>
+                            <p className="text-sm text-green-600 font-medium">
+                              {userItem.points} points
+                            </p>
+                          </div>
+                          {selectedSwapItem?.id === userItem.id && (
+                            <div className="flex-shrink-0">
+                              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p>You don't have any available items to offer</p>
+                    <p className="text-sm">You can still send a swap request without offering an item</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Message */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Add a message (optional):
+                </label>
+                <textarea
+                  value={swapMessage}
+                  onChange={(e) => setSwapMessage(e.target.value)}
+                  placeholder="Tell the owner why you'd like to swap this item..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                  rows="3"
+                  maxLength="500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {swapMessage.length}/500 characters
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowSwapModal(false);
+                    setSelectedSwapItem(null);
+                    setSwapMessage("");
+                  }}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSwapRequest}
+                  disabled={swapLoading}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center"
+                >
+                  {swapLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Swap Request"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

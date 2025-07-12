@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/UseAuth";
-import { Plus, Package, Users, Award, TrendingUp, Camera, User, Upload, X } from "lucide-react";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { Plus, Package, Users, Award, TrendingUp, Camera, User, Upload, X, MessageCircle, Send, Check, XCircle } from "lucide-react";
+import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../services/firebase";
 import toast from "react-hot-toast";
 
@@ -10,6 +10,8 @@ const Dashboard = () => {
   const { currentUser, setCurrentUser } = useAuth();
   const [userItems, setUserItems] = useState([]);
   const [userSwaps, setUserSwaps] = useState([]);
+  const [incomingSwaps, setIncomingSwaps] = useState([]);
+  const [outgoingSwaps, setOutgoingSwaps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(null);
@@ -173,6 +175,17 @@ const Dashboard = () => {
         });
         setUserSwaps(swaps);
 
+        // Separate incoming and outgoing swap requests
+        const incomingRequests = swaps.filter(swap => 
+          swap.uploaderId === currentUser.uid && swap.status === "pending" && swap.type === "swap"
+        );
+        const outgoingRequests = swaps.filter(swap => 
+          swap.requesterId === currentUser.uid && swap.status === "pending" && swap.type === "swap"
+        );
+        
+        setIncomingSwaps(incomingRequests);
+        setOutgoingSwaps(outgoingRequests);
+
       } catch (error) {
         console.error("Error fetching user data:", error);
         console.error("Error details:", {
@@ -187,6 +200,55 @@ const Dashboard = () => {
 
     fetchUserData();
   }, [currentUser]);
+
+  // Swap management functions
+  const handleAcceptSwap = async (swapId, swapData) => {
+    try {
+      // Update swap status to completed
+      await updateDoc(doc(db, "swaps", swapId), {
+        status: "completed",
+        completedAt: serverTimestamp()
+      });
+
+      // Mark both items as unavailable
+      await updateDoc(doc(db, "items", swapData.itemId), {
+        available: false,
+        swappedWith: swapData.requesterId,
+        swappedAt: serverTimestamp()
+      });
+
+      if (swapData.proposedItemId) {
+        await updateDoc(doc(db, "items", swapData.proposedItemId), {
+          available: false,
+          swappedWith: swapData.uploaderId,
+          swappedAt: serverTimestamp()
+        });
+      }
+
+      toast.success("Swap accepted! Items are now exchanged.");
+      // Trigger data refetch by calling the useEffect dependency
+      window.location.reload(); // Simple solution for now
+    } catch (error) {
+      console.error("Error accepting swap:", error);
+      toast.error("Failed to accept swap");
+    }
+  };
+
+  const handleRejectSwap = async (swapId) => {
+    try {
+      await updateDoc(doc(db, "swaps", swapId), {
+        status: "rejected",
+        rejectedAt: serverTimestamp()
+      });
+
+      toast.success("Swap request rejected");
+      // Trigger data refetch by calling the useEffect dependency
+      window.location.reload(); // Simple solution for now
+    } catch (error) {
+      console.error("Error rejecting swap:", error);
+      toast.error("Failed to reject swap");
+    }
+  };
 
   const stats = [
     {
@@ -212,7 +274,7 @@ const Dashboard = () => {
     },
     {
       name: "Completed Swaps",
-      value: userSwaps.filter(swap => swap.status === "completed").length,
+      value: userSwaps.filter(swap => swap.status === "completed" || swap.status === "accepted").length,
       icon: TrendingUp,
       color: "text-purple-600",
       bgColor: "bg-purple-100",
@@ -387,6 +449,240 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Swap Requests Section */}
+        {(incomingSwaps.length > 0 || outgoingSwaps.length > 0) && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Swap Requests</h2>
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Incoming Swap Requests */}
+              <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <MessageCircle className="h-5 w-5 text-green-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Incoming Requests ({incomingSwaps.length})
+                    </h3>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {incomingSwaps.length > 0 ? (
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {incomingSwaps.map((swap) => (
+                        <div key={swap.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="text-blue-600 font-semibold text-sm">
+                                    {swap.requesterName?.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{swap.requesterName}</p>
+                                  <p className="text-sm text-gray-500">wants to swap</p>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                                <p className="text-sm font-medium text-gray-700">For your item:</p>
+                                <p className="text-sm text-gray-600">{swap.itemTitle}</p>
+                              </div>
+
+                              {swap.proposedItemTitle && (
+                                <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                                  <p className="text-sm font-medium text-blue-700">Offering:</p>
+                                  <p className="text-sm text-blue-600">{swap.proposedItemTitle}</p>
+                                </div>
+                              )}
+
+                              {swap.message && (
+                                <div className="bg-yellow-50 rounded-lg p-3 mb-3">
+                                  <p className="text-sm font-medium text-yellow-700">Message:</p>
+                                  <p className="text-sm text-yellow-600">{swap.message}</p>
+                                </div>
+                              )}
+
+                              <p className="text-xs text-gray-500">
+                                {swap.createdAt?.toDate().toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex space-x-2 mt-4">
+                            <button
+                              onClick={() => handleAcceptSwap(swap.id, swap)}
+                              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center text-sm font-medium"
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleRejectSwap(swap.id)}
+                              className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center justify-center text-sm font-medium"
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No incoming swap requests</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Outgoing Swap Requests */}
+              <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Send className="h-5 w-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Outgoing Requests ({outgoingSwaps.length})
+                    </h3>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {outgoingSwaps.length > 0 ? (
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {outgoingSwaps.map((swap) => (
+                        <div key={swap.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <span className="text-green-600 font-semibold text-sm">
+                                    {swap.uploaderName?.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{swap.uploaderName}</p>
+                                  <p className="text-sm text-gray-500">request sent to</p>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                                <p className="text-sm font-medium text-gray-700">Requesting:</p>
+                                <p className="text-sm text-gray-600">{swap.itemTitle}</p>
+                              </div>
+
+                              {swap.proposedItemTitle && (
+                                <div className="bg-green-50 rounded-lg p-3 mb-3">
+                                  <p className="text-sm font-medium text-green-700">You offered:</p>
+                                  <p className="text-sm text-green-600">{swap.proposedItemTitle}</p>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  swap.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                                  swap.status === "accepted" ? "bg-green-100 text-green-800" :
+                                  "bg-red-100 text-red-800"
+                                }`}>
+                                  {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                                </span>
+                                <p className="text-xs text-gray-500">
+                                  {swap.createdAt?.toDate().toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Send className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No outgoing swap requests</p>
+                      <Link
+                        to="/browse"
+                        className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Browse items to request swaps
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Completed Swaps Section */}
+        {userSwaps.filter(swap => swap.status === "completed" || swap.status === "accepted").length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Completed Swaps</h2>
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Swap History ({userSwaps.filter(swap => swap.status === "completed" || swap.status === "accepted").length})
+                </h3>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {userSwaps.filter(swap => swap.status === "completed" || swap.status === "accepted").map((swap) => (
+                    <div key={swap.id} className="border border-green-200 rounded-lg p-4 bg-green-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center">
+                              <Check className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-green-900">Swap Completed</p>
+                              <p className="text-sm text-green-700">
+                                {swap.requesterId === currentUser.uid ? 'You received' : 'You gave away'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <div className="bg-white rounded-lg p-3 border border-green-200">
+                              <p className="text-sm font-medium text-green-700">
+                                {swap.requesterId === currentUser.uid ? 'You got:' : 'You gave:'}
+                              </p>
+                              <p className="text-sm text-green-600">{swap.itemTitle}</p>
+                            </div>
+                            
+                            {swap.proposedItemTitle && (
+                              <div className="bg-white rounded-lg p-3 border border-green-200">
+                                <p className="text-sm font-medium text-green-700">
+                                  {swap.requesterId === currentUser.uid ? 'You gave:' : 'You got:'}
+                                </p>
+                                <p className="text-sm text-green-600">{swap.proposedItemTitle}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                                Completed
+                              </span>
+                              <span className="text-sm text-green-600">
+                                with {swap.requesterId === currentUser.uid ? swap.uploaderName : swap.requesterName}
+                              </span>
+                            </div>
+                            <p className="text-xs text-green-500">
+                              {swap.completedAt?.toDate().toLocaleDateString() || 
+                               swap.acceptedAt?.toDate().toLocaleDateString() ||
+                               swap.createdAt?.toDate().toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Avatar Selection Modal */}
         {showAvatarModal && (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/UseAuth";
-import { Check, X, Eye, Trash2, Users, Package, TrendingUp, Ban, Shield } from "lucide-react";
+import { Check, X, Eye, Trash2, Users, Package, TrendingUp, Ban, Shield, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { 
   collection, 
   query, 
@@ -18,14 +18,19 @@ const AdminPanel = () => {
   const [pendingItems, setPendingItems] = useState([]);
   const [allItems, setAllItems] = useState([]);
   const [users, setUsers] = useState([]);
+  const [swaps, setSwaps] = useState([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalItems: 0,
     pendingItems: 0,
-    approvedItems: 0
+    approvedItems: 0,
+    totalSwaps: 0,
+    pendingSwaps: 0,
+    completedSwaps: 0
   });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
+  const [swapFilter, setSwapFilter] = useState("all"); // all, pending, accepted, rejected, completed
 
   useEffect(() => {
     if (currentUser?.isAdmin) {
@@ -67,12 +72,35 @@ const AdminPanel = () => {
       }));
       setUsers(usersData);
 
+      // Fetch all swaps
+      const swapsQuery = query(collection(db, "swaps"));
+      const swapsSnapshot = await getDocs(swapsQuery);
+      const swapsData = swapsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      // Sort swaps by creation date (newest first)
+      swapsData.sort((a, b) => {
+        const aTime = a.createdAt?.toDate() || new Date(0);
+        const bTime = b.createdAt?.toDate() || new Date(0);
+        return bTime - aTime;
+      });
+      
+      setSwaps(swapsData);
+
       // Calculate stats
+      const pendingSwaps = swapsData.filter(swap => swap.status === "pending").length;
+      const completedSwaps = swapsData.filter(swap => swap.status === "accepted" || swap.status === "completed").length;
+
       setStats({
         totalUsers: usersData.length,
         totalItems: allItemsData.length,
         pendingItems: pendingData.length,
-        approvedItems: allItemsData.filter(item => item.status === "approved").length
+        approvedItems: allItemsData.filter(item => item.status === "approved").length,
+        totalSwaps: swapsData.length,
+        pendingSwaps,
+        completedSwaps
       });
 
     } catch (error) {
@@ -191,7 +219,7 @@ const AdminPanel = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-blue-100 rounded-md p-3">
@@ -239,14 +267,26 @@ const AdminPanel = () => {
               </div>
             </div>
           </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="bg-indigo-100 rounded-md p-3">
+                <ArrowRightLeft className="h-6 w-6 text-indigo-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Swaps</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalSwaps}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="mb-6">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab("pending")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === "pending"
                   ? "border-green-500 text-green-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -256,7 +296,7 @@ const AdminPanel = () => {
             </button>
             <button
               onClick={() => setActiveTab("items")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === "items"
                   ? "border-green-500 text-green-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -265,8 +305,18 @@ const AdminPanel = () => {
               All Items ({stats.totalItems})
             </button>
             <button
+              onClick={() => setActiveTab("swaps")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === "swaps"
+                  ? "border-green-500 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Swaps ({stats.totalSwaps})
+            </button>
+            <button
               onClick={() => setActiveTab("users")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === "users"
                   ? "border-green-500 text-green-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -393,6 +443,165 @@ const AdminPanel = () => {
           </div>
         )}
 
+        {activeTab === "swaps" && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Swap Monitoring</h2>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSwapFilter("all")}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    swapFilter === "all"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  All ({swaps.length})
+                </button>
+                <button
+                  onClick={() => setSwapFilter("pending")}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    swapFilter === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Pending ({swaps.filter(s => s.status === "pending").length})
+                </button>
+                <button
+                  onClick={() => setSwapFilter("accepted")}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    swapFilter === "accepted"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Accepted ({swaps.filter(s => s.status === "accepted").length})
+                </button>
+                <button
+                  onClick={() => setSwapFilter("rejected")}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    swapFilter === "rejected"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Rejected ({swaps.filter(s => s.status === "rejected").length})
+                </button>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {swaps
+                .filter(swap => swapFilter === "all" || swap.status === swapFilter)
+                .map((swap) => (
+                  <div key={swap.id} className="p-4 sm:p-6">
+                    <div className="flex flex-col space-y-4">
+                      {/* Swap Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold text-sm">
+                                {swap.requesterName?.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-sm text-gray-500">→</span>
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                              <span className="text-green-600 font-semibold text-sm">
+                                {swap.uploaderName?.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">
+                              {swap.requesterName} → {swap.uploaderName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {swap.createdAt?.toDate().toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          swap.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                          swap.status === "accepted" ? "bg-green-100 text-green-800" :
+                          swap.status === "rejected" ? "bg-red-100 text-red-800" :
+                          "bg-gray-100 text-gray-800"
+                        }`}>
+                          {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                        </span>
+                      </div>
+
+                      {/* Swap Details */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Requested Item */}
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Requested Item:</p>
+                          <p className="text-sm text-gray-900 font-medium">{swap.itemTitle}</p>
+                          <p className="text-xs text-gray-500">by {swap.uploaderName}</p>
+                        </div>
+
+                        {/* Offered Item */}
+                        {swap.proposedItemTitle ? (
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <p className="text-sm font-medium text-blue-700 mb-2">Offered Item:</p>
+                            <p className="text-sm text-blue-900 font-medium">{swap.proposedItemTitle}</p>
+                            <p className="text-xs text-blue-600">by {swap.requesterName}</p>
+                          </div>
+                        ) : (
+                          <div className="bg-yellow-50 rounded-lg p-3">
+                            <p className="text-sm font-medium text-yellow-700 mb-2">No Item Offered</p>
+                            <p className="text-xs text-yellow-600">Request without specific item exchange</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Message */}
+                      {swap.message && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-700 mb-1">Message:</p>
+                          <p className="text-sm text-gray-600">{swap.message}</p>
+                        </div>
+                      )}
+
+                      {/* Admin Actions */}
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <button
+                          onClick={() => window.open(`/item/${swap.itemId}`, "_blank")}
+                          className="px-3 py-2 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center"
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View Requested Item
+                        </button>
+                        {swap.proposedItemId && (
+                          <button
+                            onClick={() => window.open(`/item/${swap.proposedItemId}`, "_blank")}
+                            className="px-3 py-2 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Offered Item
+                          </button>
+                        )}
+                        <button
+                          onClick={fetchAdminData}
+                          className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center"
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Refresh
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {swaps.filter(swap => swapFilter === "all" || swap.status === swapFilter).length === 0 && (
+                <div className="p-6 text-center text-gray-500">
+                  <ArrowRightLeft className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p>No swaps found for the selected filter</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === "users" && (
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -474,6 +683,187 @@ const AdminPanel = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "swaps" && (
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+              <h2 className="text-lg font-semibold text-gray-900">Swap Requests</h2>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSwapFilter("all")}
+                  className={`px-3 py-2 rounded text-sm font-medium ${
+                    swapFilter === "all"
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  All ({swaps.length})
+                </button>
+                <button
+                  onClick={() => setSwapFilter("pending")}
+                  className={`px-3 py-2 rounded text-sm font-medium ${
+                    swapFilter === "pending"
+                      ? "bg-yellow-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Pending ({swaps.filter(s => s.status === "pending").length})
+                </button>
+                <button
+                  onClick={() => setSwapFilter("accepted")}
+                  className={`px-3 py-2 rounded text-sm font-medium ${
+                    swapFilter === "accepted"
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Accepted ({swaps.filter(s => s.status === "accepted").length})
+                </button>
+                <button
+                  onClick={() => setSwapFilter("rejected")}
+                  className={`px-3 py-2 rounded text-sm font-medium ${
+                    swapFilter === "rejected"
+                      ? "bg-red-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Rejected ({swaps.filter(s => s.status === "rejected").length})
+                </button>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {swaps
+                .filter(swap => swapFilter === "all" || swap.status === swapFilter)
+                .map((swap) => (
+                <div key={swap.id} className="p-4 sm:p-6">
+                  <div className="flex flex-col space-y-4">
+                    {/* Swap Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-indigo-100 rounded-full p-2">
+                          <ArrowRightLeft className="h-5 w-5 text-indigo-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Swap Request #{swap.id.slice(-6)}</h3>
+                          <p className="text-sm text-gray-500">
+                            Created: {swap.createdAt?.toDate().toLocaleDateString()}
+                            {swap.acceptedAt && ` • Accepted: ${swap.acceptedAt.toDate().toLocaleDateString()}`}
+                            {swap.rejectedAt && ` • Rejected: ${swap.rejectedAt.toDate().toLocaleDateString()}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          swap.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                          swap.status === "accepted" ? "bg-green-100 text-green-800" :
+                          swap.status === "rejected" ? "bg-red-100 text-red-800" :
+                          "bg-gray-100 text-gray-800"
+                        }`}>
+                          {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Swap Participants */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Requester Side */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-3">Requester</h4>
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {swap.requesterName?.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{swap.requesterName}</p>
+                            <p className="text-sm text-gray-500">{swap.requesterEmail}</p>
+                          </div>
+                        </div>
+                        {swap.proposedItemId && (
+                          <div className="border rounded-lg p-3 bg-white">
+                            <p className="text-sm font-medium text-gray-700">Proposed Item:</p>
+                            <p className="text-sm text-gray-600">{swap.proposedItemTitle}</p>
+                            <button
+                              onClick={() => window.open(`/item/${swap.proposedItemId}`, "_blank")}
+                              className="text-blue-600 hover:text-blue-800 text-sm flex items-center mt-1"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Item
+                            </button>
+                          </div>
+                        )}
+                        {swap.message && (
+                          <div className="mt-3 p-3 bg-blue-50 rounded border">
+                            <p className="text-sm font-medium text-blue-800">Message:</p>
+                            <p className="text-sm text-blue-700 mt-1">{swap.message}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Owner Side */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-3">Item Owner</h4>
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <span className="text-green-600 font-semibold text-sm">
+                              {swap.uploaderName?.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{swap.uploaderName}</p>
+                            <p className="text-sm text-gray-500">{swap.uploaderEmail}</p>
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-3 bg-white">
+                          <p className="text-sm font-medium text-gray-700">Requested Item:</p>
+                          <p className="text-sm text-gray-600">{swap.itemTitle}</p>
+                          <button
+                            onClick={() => window.open(`/item/${swap.itemId}`, "_blank")}
+                            className="text-blue-600 hover:text-blue-800 text-sm flex items-center mt-1"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Item
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Swap Type and Points */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600 pt-2 border-t">
+                      <div className="flex items-center space-x-4">
+                        <span className="font-medium">Type: 
+                          <span className="text-gray-900 ml-1">
+                            {swap.type === "swap" ? "Item Swap" : "Points Exchange"}
+                          </span>
+                        </span>
+                        {swap.pointsOffered && (
+                          <span className="font-medium">Points Offered: 
+                            <span className="text-green-600 ml-1">{swap.pointsOffered}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                        <button
+                          onClick={() => fetchAdminData()}
+                          className="p-2 text-gray-400 hover:text-gray-600 rounded"
+                          title="Refresh"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {swaps.filter(swap => swapFilter === "all" || swap.status === swapFilter).length === 0 && (
+                <div className="p-6 text-center text-gray-500">
+                  No {swapFilter === "all" ? "" : swapFilter} swap requests found
+                </div>
+              )}
             </div>
           </div>
         )}
